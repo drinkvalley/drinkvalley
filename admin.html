@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Admin — BebaBem</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script type="module" src="admin.js" defer></script>
+</head>
+<body>
+  <main class="container">
+    <h2>Admin — Cadastrar Produto</h2>
+
+    <form id="login-form">
+      <h3>Login</h3>
+      <input name="email" placeholder="Email" required>
+      <input name="password" type="password" placeholder="Senha" required>
+      <button type="submit">Entrar</button>
+    </form>
+
+    <section id="admin-area" style="display:none">
+      <form id="new-product-form">
+        <input name="title" placeholder="Nome do produto" required>
+        <input name="slug" placeholder="Slug (espumante-rio-sol)" required>
+        <textarea name="description" placeholder="Descrição"></textarea>
+        <input name="price" type="number" step="0.01" placeholder="Preço" required>
+        <input name="compare_at_price" type="number" step="0.01" placeholder="Preço anterior">
+        <input name="volume_ml" type="number" placeholder="Volume (ml)">
+        <input name="abv" type="number" step="0.1" placeholder="Teor alcoólico (%)">
+        <select name="category_id">
+          <option value="">Escolha categoria</option>
+        </select>
+        <input type="file" id="product-image" accept="image/*" required>
+        <button type="submit">Cadastrar Produto</button>
+      </form>
+
+      <h3>Produtos cadastrados</h3>
+      <div id="products-list"></div>
+      <button id="logout-btn">Sair</button>
+    </section>
+  </main>
+
+  <!-- WhatsApp -->
+  <a
+    href="https://wa.me/5551998811587?text=Olá%2C%20tenho%20uma%20dúvida"
+    id="whatsapp-btn"
+    target="_blank"
+    aria-label="Fale conosco no WhatsApp"
+  >
+    💬
+  </a>
+</body>
+</html>

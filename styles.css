@@ -1,0 +1,61 @@
+:root{
+  --bg:#ffffff; --muted:#6b7280; --accent:#f6b046; --dark:#0f172a;
+  --card-shadow: 0 8px 24px rgba(15,23,42,0.06);
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--dark);-webkit-font-smoothing:antialiased}
+.container{max-width:1200px;margin:0 auto;padding:24px}
+.site-header{border-bottom:1px solid #eef2f7;background:#fff;position:sticky;top:0;z-index:20}
+.site-header .container{display:flex;align-items:center;justify-content:space-between}
+.logo{font-size:1.25rem;font-weight:700}
+nav{display:flex;gap:12px;align-items:center}
+#search{padding:10px 14px;border-radius:10px;border:1px solid #e6edf3;min-width:280px}
+#cart-btn{background:var(--dark);color:#fff;border:none;padding:10px 14px;border-radius:10px;cursor:pointer}
+
+.title{text-align:center;font-size:1.5rem;margin:28px 0 18px}
+
+.products-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:22px}
+.card{background:#fff;border-radius:14px;box-shadow:var(--card-shadow);padding:18px;border:1px solid #f1f5f9;display:flex;flex-direction:column;align-items:center;position:relative}
+.card img{width:140px;height:220px;object-fit:contain;border-radius:8px;margin-bottom:12px}
+.product-title{text-align:center;font-weight:600;margin:6px 0}
+.price{font-weight:800;font-size:1.15rem;margin-top:10px}
+.compare{color:var(--muted);text-decoration:line-through;font-size:0.9rem}
+
+.badge{position:absolute;top:12px;right:8px;background:#111;color:#fff;padding:6px 8px;border-radius:8px;font-size:0.8rem}
+
+.stars{display:inline-block;margin-top:6px}
+.star{font-size:14px;color:var(--accent)}
+
+.card-footer{margin-top:auto;width:100%;display:flex;justify-content:space-between;gap:8px}
+
+/* cart modal */
+.cart-modal{position:fixed;right:0;top:0;height:100vh;width:420px;background:#fff;box-shadow:-12px 0 40px rgba(2,6,23,0.1);transform:translateX(110%);transition:transform .25s ease;padding:18px;z-index:50}
+.cart-modal[aria-hidden="false"]{transform:translateX(0)}
+.cart-content{height:100%;display:flex;flex-direction:column}
+#cart-items{list-style:none;padding:0;margin:10px 0;flex:1;overflow:auto}
+.cart-footer{display:flex;justify-content:space-between;align-items:center;margin-top:12px}
+
+#whatsapp-btn {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background-color: #25D366;
+  color: white;
+  font-size: 28px;
+  padding: 14px 16px;
+  border-radius: 50%;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+  text-decoration: none;
+  z-index: 999;
+  transition: transform 0.3s;
+}
+#whatsapp-btn:hover {
+  transform: scale(1.1);
+}
+
+@media(max-width:700px){
+  .container{padding:14px}
+  .products-grid{grid-template-columns:repeat(2,1fr)}
+  .cart-modal{width:100%}
+}

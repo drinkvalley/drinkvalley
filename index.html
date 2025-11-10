@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>BebaBem — Loja de Bebidas</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script type="module" src="app.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <h1 class="logo">BebaBem</h1>
+      <nav>
+        <input id="search" placeholder="Buscar por produtos..." aria-label="Buscar produtos" />
+        <button id="cart-btn">Carrinho (<span id="cart-count">0</span>)</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <h2>Produtos</h2>
+    <section id="products-grid" class="products-grid" aria-live="polite"></section>
+  </main>
+
+  <aside id="cart-modal" class="cart-modal" aria-hidden="true">
+    <div class="cart-content">
+      <button id="close-cart" aria-label="Fechar carrinho">✕</button>
+      <h3>Seu Carrinho</h3>
+      <ul id="cart-items"></ul>
+      <div class="cart-footer">
+        <div>Total: R$ <span id="cart-total">0.00</span></div>
+        <button id="checkout-btn">Finalizar Compra</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Botão do WhatsApp -->
+  <a
+    href="https://wa.me/5551998811587?text=Olá%2C%20quero%20fazer%20um%20pedido!"
+    id="whatsapp-btn"
+    target="_blank"
+    aria-label="Fale conosco no WhatsApp"
+  >
+    💬
+  </a>
+
+</body>
+</html>
