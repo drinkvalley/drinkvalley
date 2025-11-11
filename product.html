@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Produto — DrinkValley</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script type="module" src="product.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="logo-link" href="/">
+        <img src="images/logoDrinkValley.png" alt="DrinkValley" class="logo-img" />
+      </a>
+      <div class="controls">
+        <a href="/" class="link-muted">Voltar</a>
+        <button id="cart-btn" class="btn-primary">Carrinho (<span id="cart-count">0</span>)</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container product-page">
+    <div id="product-detail" class="product-detail">Carregando...</div>
+    <aside class="related">
+      <h4>Produtos relacionados</h4>
+      <div id="related-grid" class="products-grid small"></div>
+    </aside>
+  </main>
+
+  <aside id="cart-modal" class="cart-modal" aria-hidden="true">
+    <div class="cart-content">
+      <button id="close-cart" class="close-icon" aria-label="Fechar carrinho">✕</button>
+      <h3>Seu Carrinho</h3>
+      <ul id="cart-items"></ul>
+      <div class="cart-footer">
+        <div>Total: R$ <span id="cart-total">0.00</span></div>
+        <div>
+          <button id="checkout-btn" class="btn-primary">Finalizar Compra</button>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <a
+    id="whatsapp-btn"
+    href="https://wa.me/5551998811587"
+    target="_blank"
+    aria-label="Fale conosco no WhatsApp"
+    rel="noopener"
+  >
+    <span class="whats-emoji">💬</span>
+  </a>
+</body>
+</html>

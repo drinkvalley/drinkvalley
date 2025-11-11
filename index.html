@@ -3,47 +3,113 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>BebaBem — Loja de Bebidas</title>
+  <title>DrinkValley — Loja de Bebidas</title>
   <link rel="stylesheet" href="styles.css" />
   <script type="module" src="app.js" defer></script>
 </head>
 <body>
   <header class="site-header">
-    <div class="container">
-      <h1 class="logo">BebaBem</h1>
-      <nav>
+    <div class="container header-inner">
+      <a class="logo-link" href="/">
+        <img src="images/logoDrinkValley.png" alt="DrinkValley" class="logo-img" />
+      </a>
+
+      <div class="controls">
         <input id="search" placeholder="Buscar por produtos..." aria-label="Buscar produtos" />
-        <button id="cart-btn">Carrinho (<span id="cart-count">0</span>)</button>
-      </nav>
+        <select id="filter-category" aria-label="Filtrar por categoria">
+          <option value="">Todas categorias</option>
+        </select>
+        <select id="filter-order" aria-label="Ordenar">
+          <option value="featured">Destaques</option>
+          <option value="new">Mais novos</option>
+          <option value="price_asc">Preço: menor</option>
+          <option value="price_desc">Preço: maior</option>
+        </select>
+        <button id="wishlist-btn" class="btn-ghost" aria-label="Favoritos">❤️ <span id="wish-count">0</span></button>
+        <button id="cart-btn" class="btn-primary">Carrinho (<span id="cart-count">0</span>)</button>
+      </div>
     </div>
   </header>
 
   <main class="container">
-    <h2>Produtos</h2>
-    <section id="products-grid" class="products-grid" aria-live="polite"></section>
+    <section class="hero">
+      <div>
+        <h1>DrinkValley</h1>
+        <p class="hero-sub">Bebidas selecionadas, entrega rápida e seguro. Escolha com confiança.</p>
+      </div>
+      <img src="images/logoDrinkValley.png" alt="" class="hero-logo" />
+    </section>
+
+    <section class="promo-row">
+      <div class="promo">🔥 Frete grátis acima de R$ 200</div>
+      <div class="promo">⭐ Compre com segurança — garantia DrinkValley</div>
+      <div class="promo">📦 Envio em até 48h</div>
+    </section>
+
+    <section class="featured-section">
+      <h2>Destaques</h2>
+      <div id="featured-grid" class="products-grid"></div>
+    </section>
+
+    <section>
+      <h2>Produtos</h2>
+      <div id="products-grid" class="products-grid" aria-live="polite"></div>
+    </section>
+
+    <section class="newsletter">
+      <h3>Assine nossa newsletter</h3>
+      <form id="newsletter-form">
+        <input name="email" type="email" placeholder="Seu melhor e-mail" required />
+        <button class="btn-primary" type="submit">Assinar</button>
+      </form>
+      <div id="newsletter-msg" class="muted"></div>
+    </section>
   </main>
 
   <aside id="cart-modal" class="cart-modal" aria-hidden="true">
     <div class="cart-content">
-      <button id="close-cart" aria-label="Fechar carrinho">✕</button>
+      <button id="close-cart" class="close-icon" aria-label="Fechar carrinho">✕</button>
       <h3>Seu Carrinho</h3>
       <ul id="cart-items"></ul>
       <div class="cart-footer">
         <div>Total: R$ <span id="cart-total">0.00</span></div>
-        <button id="checkout-btn">Finalizar Compra</button>
+        <div>
+          <button id="checkout-btn" class="btn-primary">Finalizar Compra</button>
+        </div>
       </div>
     </div>
   </aside>
 
-  <!-- Botão do WhatsApp -->
+  <div id="checkout-modal" class="overlay hidden" aria-hidden="true">
+    <div class="modal">
+      <button id="close-checkout" class="close-icon">✕</button>
+      <h3>Finalizar Compra</h3>
+      <div id="checkout-body"></div>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <div class="footer-left">
+        <img src="images/logoDrinkValley.png" alt="DrinkValley" class="logo-sm" />
+        <p>© <span id="current-year"></span> DrinkValley — Todos os direitos reservados.</p>
+      </div>
+      <div class="footer-right">
+        <a href="admin.html" class="link-muted">Área do Admin</a>
+        <a href="#" class="link-muted">Sobre</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Botão do WhatsApp (corrigido) -->
   <a
-    href="https://wa.me/5551998811587?text=Olá%2C%20quero%20fazer%20um%20pedido!"
     id="whatsapp-btn"
+    href="https://wa.me/5551998811587"
     target="_blank"
     aria-label="Fale conosco no WhatsApp"
+    rel="noopener"
   >
-    💬
+    <span class="whats-emoji">💬</span>
   </a>
-
 </body>
 </html>
