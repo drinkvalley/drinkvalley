@@ -11,9 +11,28 @@ const adminArea = document.getElementById('admin-area');
 const newProductForm = document.getElementById('new-product-form');
 const productsList = document.getElementById('products-list');
 const categorySelect = newProductForm?.querySelector('select[name="category_id"]');
+const previewImages = document.getElementById('preview-images');
+const imagesInput = document.getElementById('product-images');
 const countProducts = document.getElementById('count-products');
 const countOrders = document.getElementById('count-orders');
 const countSales = document.getElementById('count-sales');
+
+let selectedFiles = [];
+
+imagesInput?.addEventListener('change', (e)=>{
+  previewImages.innerHTML = '';
+  selectedFiles = Array.from(e.target.files || []);
+  selectedFiles.forEach(f=>{
+    const url = URL.createObjectURL(f);
+    const img = document.createElement('img');
+    img.src = url;
+    img.style.width = '70px';
+    img.style.height = '70px';
+    img.style.objectFit = 'cover';
+    img.style.borderRadius = '8px';
+    previewImages.appendChild(img);
+  });
+});
 
 loginForm.addEventListener('submit', async (e)=>{
   e.preventDefault();
@@ -36,7 +55,7 @@ async function loadDashboard(){
   const [{ data:prod }, { data:orders }, { data:sales }] = await Promise.all([
     supabase.from('products').select('id'),
     supabase.from('orders').select('id'),
-    supabase.rpc('sum_orders_total') // we'll provide fallback if not exists
+    supabase.rpc('sum_orders_total')
   ]);
   countProducts.textContent = prod?.length || 0;
   countOrders.textContent = orders?.length || 0;
@@ -69,11 +88,8 @@ async function loadProducts(){
 
 newProductForm?.addEventListener('submit', async (e)=>{
   e.preventDefault();
-  const file = document.getElementById('product-image').files[0];
-  if(!file){ alert('Escolha imagem'); return; }
-  const filePath = `${Date.now()}_${file.name}`;
-  const up = await supabase.storage.from('product-images').upload(filePath, file, { cacheControl: '3600', upsert: false });
-  if(up.error){ alert('Erro upload'); console.error(up.error); return; }
+  if(!selectedFiles.length){ alert('Escolha pelo menos 1 imagem'); return; }
+  // create product first with placeholder image_path (we will update main image)
   const payload = {
     title: newProductForm.title.value,
     slug: newProductForm.slug.value,
@@ -84,25 +100,44 @@ newProductForm?.addEventListener('submit', async (e)=>{
     abv: newProductForm.abv.value ? parseFloat(newProductForm.abv.value) : null,
     category_id: newProductForm.category_id.value ? parseInt(newProductForm.category_id.value) : null,
     stock: newProductForm.stock.value ? parseInt(newProductForm.stock.value) : null,
-    image_path: filePath,
+    image_path: null,
+    thumbnail: null,
     is_featured: newProductForm.querySelector('[name="is_featured"]').checked
   };
-  const { error } = await supabase.from('products').insert([payload]);
-  if(error){ alert('Erro salvar produto'); console.error(error); return; }
-  alert('Produto cadastrado!');
+  const { data: product, error } = await supabase.from('products').insert([payload]).select().single();
+  if(error || !product){ alert('Erro ao criar produto'); console.error(error); return; }
+
+  // upload images
+  const uploaded = [];
+  for(let i=0;i<selectedFiles.length;i++){
+    const file = selectedFiles[i];
+    const filePath = `${Date.now()}_${i}_${file.name}`;
+    const up = await supabase.storage.from('product-images').upload(filePath, file);
+    if(up.error){ console.error('Erro upload', up.error); continue; }
+    uploaded.push({ image_path: filePath, position: i });
+    // insert in product_images table
+    await supabase.from('product_images').insert([{ product_id: product.id, image_path: filePath, position: i }]);
+    // for first image set product.image_path and separate thumbnail
+    if(i===0){
+      await supabase.from('products').update({ image_path: filePath, thumbnail: filePath }).eq('id', product.id);
+    }
+  }
+
+  alert('Produto cadastrado com imagens!');
   newProductForm.reset();
-  await loadProducts();
-  await loadDashboard();
+  previewImages.innerHTML = '';
+  selectedFiles = [];
+  loadProducts();
+  loadDashboard();
 });
 
-// editar/excluir simplificado com prompts
+// edit / delete
 productsList?.addEventListener('click', async (e)=>{
   const editId = e.target.dataset.edit;
   const delId = e.target.dataset.del;
   if(editId){
     const { data } = await supabase.from('products').select('*').eq('id', editId).single();
     if(!data) return alert('Produto não encontrado');
-    // prompt para edição rápida
     const title = prompt('Título', data.title);
     if(title === null) return;
     const price = prompt('Preço (ex: 25.50)', data.price);
@@ -128,7 +163,5 @@ productsList?.addEventListener('click', async (e)=>{
   }
 });
 
-// small RPC sum fallback (sum_orders_total) - optional to create via SQL
-async function ensureSumRpc(){
-  // nothing here: if rpc not exists loadDashboard uses fallback
-}
+// initial
+loadCategories();

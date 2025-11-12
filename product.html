@@ -4,51 +4,37 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Produto — DrinkValley</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css" />
   <script type="module" src="product.js" defer></script>
 </head>
 <body>
   <header class="site-header">
     <div class="container header-inner">
-      <a class="logo-link" href="/">
-        <img src="images/logoDrinkValley.png" alt="DrinkValley" class="logo-img" />
-      </a>
-      <div class="controls">
-        <a href="/" class="link-muted">Voltar</a>
-        <button id="cart-btn" class="btn-primary">Carrinho (<span id="cart-count">0</span>)</button>
-      </div>
+      <a class="logo-link" href="/"><img src="images/logoDrinkValley.png" alt="DrinkValley" class="logo-img" /></a>
+      <div class="search-center"><a href="/" class="link-muted">Voltar</a></div>
+      <div class="controls-right"></div>
     </div>
   </header>
 
   <main class="container product-page">
     <div id="product-detail" class="product-detail">Carregando...</div>
-    <aside class="related">
-      <h4>Produtos relacionados</h4>
-      <div id="related-grid" class="products-grid small"></div>
-    </aside>
   </main>
 
-  <aside id="cart-modal" class="cart-modal" aria-hidden="true">
-    <div class="cart-content">
-      <button id="close-cart" class="close-icon" aria-label="Fechar carrinho">✕</button>
-      <h3>Seu Carrinho</h3>
-      <ul id="cart-items"></ul>
-      <div class="cart-footer">
-        <div>Total: R$ <span id="cart-total">0.00</span></div>
-        <div>
-          <button id="checkout-btn" class="btn-primary">Finalizar Compra</button>
-        </div>
-      </div>
+  <aside id="mini-cart" class="mini-cart" aria-hidden="true">
+    <div class="mini-cart-header">
+      <h3>Seu carrinho</h3>
+      <button id="close-mini-cart" class="close-icon">✕</button>
+    </div>
+    <ul id="mini-cart-items"></ul>
+    <div class="mini-cart-footer">
+      <div>Total: R$ <span id="mini-cart-total">0.00</span></div>
+      <div><button id="go-checkout" class="btn-primary">Finalizar Compra</button></div>
     </div>
   </aside>
 
-  <a
-    id="whatsapp-btn"
-    href="https://wa.me/5551998811587"
-    target="_blank"
-    aria-label="Fale conosco no WhatsApp"
-    rel="noopener"
-  >
+  <a id="whatsapp-btn" href="https://wa.me/5551998811587" target="_blank" rel="noopener" aria-label="Fale conosco no WhatsApp">
     <span class="whats-emoji">💬</span>
   </a>
 </body>
