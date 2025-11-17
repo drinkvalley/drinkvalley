@@ -47,23 +47,7 @@ async function load(){
         <a href="/" class="link-muted" style="align-self:center">Continuar comprando</a>
       </div>
 
-      <div class="reviews">
-        <h4>Avaliações</h4>
-        <div id="reviews"></div>
-        <form id="review-form" style="margin-top:8px">
-          <input name="name" placeholder="Seu nome" required />
-          <select name="rating">
-            <option value="5">5 — Excelente</option>
-            <option value="4">4 — Muito bom</option>
-            <option value="3">3 — Bom</option>
-            <option value="2">2 — Razoável</option>
-            <option value="1">1 — Ruim</option>
-          </select>
-          <textarea name="comment" placeholder="Escreva sua avaliação"></textarea>
-          <button class="btn-primary" type="submit">Enviar avaliação</button>
-        </form>
-      </div>
-    </div>
+
   `;
 
   // carousel thumbnail click
