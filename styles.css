@@ -26,6 +26,7 @@ body {
   -webkit-font-smoothing: antialiased;
   font-family: 'Inter', sans-serif;
   -webkit-font-smoothing: antialiased;
+  padding-top: 95px; /* altura do header (logo 77px + paddings) */
 }
 
 .container {
@@ -34,13 +35,19 @@ body {
   padding: 20px
 }
 
+.site-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 999;
+}
+
 .header-inner {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 12px 0;
-  position: sticky;
-  top: 0;
   background: linear-gradient(180deg, rgba(7, 17, 34, 0.6), rgba(7, 17, 34, 0.2));
   backdrop-filter: blur(6px);
   z-index: 40;
@@ -87,27 +94,53 @@ body {
 }
 
 select {
-  padding: 10px;
+  padding: 10px 14px;
   border-radius: 10px;
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.04);
-  color: inherit
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+select option {
+  background: #071224;
+  color: #fff;
+}
+
+/* Botões modernos */
+button {
+  font-family: inherit;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
 .btn-primary {
   background: linear-gradient(90deg, var(--accent), var(--accent-2));
   color: #071122;
-  border: none;
-  padding: 10px 14px;
-  border-radius: 16px;
-  cursor: pointer;
+  padding: 12px 20px;
+  border-radius: 12px;
   font-weight: 700;
-  box-shadow: 0 12px 30px rgba(246, 176, 70, 0.12);
-  transition: transform .12s
+  box-shadow: 0 6px 20px rgba(246, 176, 70, 0.25);
 }
 
 .btn-primary:hover {
-  transform: translateY(-3px)
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(246, 176, 70, 0.4);
+}
+
+.btn-ghost {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--muted);
+  padding: 10px 14px;
+  border-radius: 10px;
+}
+
+.btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
 }
 
 .btn-ghost {
