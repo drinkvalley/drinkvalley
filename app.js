@@ -1,4 +1,4 @@
-// app.js - DrinkValley versão 2.2 (WhatsApp Direto)
+// app.js - DrinkValley versão 2.3 (Corrigido: Destaques funcionando)
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
 // Substitua com suas credenciais
@@ -108,9 +108,9 @@ function renderMiniCart() {
   renderCounts();
 }
 
-// EVENTS: delegation for product cards clicks
-productsGrid.addEventListener('click', async (e) => {
-  // open product by clicking card anywhere
+// 🎯 FUNÇÃO REUTILIZÁVEL PARA AMBOS OS GRIDS
+async function handleProductCardClick(e) {
+  // Clique no card (ver detalhes)
   const card = e.target.closest('.card');
   if (card && !e.target.closest('[data-add]') && !e.target.closest('[data-wish]')) {
     const slug = card.dataset.slug;
@@ -118,6 +118,7 @@ productsGrid.addEventListener('click', async (e) => {
     return;
   }
 
+  // Adicionar ao carrinho
   const addId = e.target.closest('[data-add]')?.dataset.add;
   if (addId) {
     const { data } = await supabase.from('products').select('id,title,price,image_path,thumbnail,stock').eq('id', addId).single();
@@ -138,6 +139,7 @@ productsGrid.addEventListener('click', async (e) => {
     toast('Produto adicionado ao carrinho ✅');
   }
 
+  // Favoritar
   const wid = e.target.closest('[data-wish]')?.dataset.wish;
   if (wid) {
     const id = Number(wid);
@@ -148,9 +150,13 @@ productsGrid.addEventListener('click', async (e) => {
     toast('Favoritos atualizados');
     loadProducts(searchInput.value);
   }
-});
+}
 
-// wishlist button opens a small window showing favorites
+// 🎯 ATACHAR EVENT LISTENER A AMBOS OS GRIDS
+productsGrid?.addEventListener('click', handleProductCardClick);
+featuredGrid?.addEventListener('click', handleProductCardClick);
+
+// Wishlist popup
 wishlistBtn?.addEventListener('click', async () => {
   if (!WISHLIST.length) return toast('Nenhum favorito');
   
@@ -169,12 +175,12 @@ wishlistBtn?.addEventListener('click', async () => {
   w.document.write(`
     <!DOCTYPE html>
     <html><head><title>Favoritos — DrinkValley</title>
-    <style>body{background:#071224;color:#fff;font-family:Inter;padding:12px}</style>
+    <style>body{background:#071224;color:#fff;font-family:Inter;padding:12px;overflow:auto}</style>
     </head><body><h2>Favoritos</h2>${html}</body></html>
   `);
 });
 
-// mini-cart open/close
+// Mini-cart controls
 miniCartBtn?.addEventListener('click', () => miniCart.setAttribute('aria-hidden', 'false'));
 closeMiniCart?.addEventListener('click', () => miniCart.setAttribute('aria-hidden', 'true'));
 
@@ -205,11 +211,10 @@ function removeFromCart(id) {
   saveCart(); 
 }
 
-// 🎯 FINALIZAR COMPRA → WHATSAPP DIRETO (SEM ERRO)
+// 🎯 FINALIZAR COMPRA → WHATSAPP DIRETO
 goCheckout?.addEventListener('click', () => {
   if (!CART.length) return toast('Carrinho vazio');
   
-  // 1. Gera mensagem direto do carrinho
   let message = `🍾 *NOVO PEDIDO* DrinkValley%0A%0A`;
   CART.forEach((item, idx) => {
     message += `${idx + 1}. ${encodeURIComponent(item.title)} — ${item.qty}x R$ ${formatBRL(item.price)}%0A`;
@@ -217,36 +222,34 @@ goCheckout?.addEventListener('click', () => {
   message += `%0A*Total: R$ ${formatBRL(calcTotal())}*%0A%0A`;
   message += `✅ Pedido enviado pelo cliente. Aguardando confirmação.`;
   
-  // 2. Redireciona pro WhatsApp
   const WHATS = '5551998811587';
   window.open(`https://wa.me/${WHATS}?text=${message}`, '_blank');
   
-  // 3. Limpa carrinho e fecha modal
   CART = [];
   saveCart();
   miniCart.setAttribute('aria-hidden', 'true');
   toast('Pedido enviado via WhatsApp ✅');
 });
 
-// filters & load
+// Filters
 searchInput?.addEventListener('input', () => loadProducts(searchInput.value, filterCategory.value, filterPrice.value, filterOrder.value));
 filterCategory?.addEventListener('change', () => loadProducts(searchInput.value, filterCategory.value, filterPrice.value, filterOrder.value));
 filterPrice?.addEventListener('change', () => loadProducts(searchInput.value, filterCategory.value, filterPrice.value, filterOrder.value));
 filterOrder?.addEventListener('change', () => loadProducts(searchInput.value, filterCategory.value, filterPrice.value, filterOrder.value));
 
+// Initial load
 renderMiniCart();
 renderCounts();
 loadCategories();
 loadProducts();
 
-// load categories (for filter dropdown and categories grid)
+// Data loading functions
 async function loadCategories() {
   const { data } = await supabase.from('categories').select('*').order('name');
   if (!data) return;
   
   filterCategory.innerHTML = `<option value="">Todas categorias</option>` + data.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
   
-  // categories grid (pages with banners)
   const grid = document.querySelector('#categories-grid');
   if (grid) {
     grid.innerHTML = data.map(c => `
@@ -257,7 +260,6 @@ async function loadCategories() {
   }
 }
 
-// load products with filters
 async function loadProducts(q = '', categoryId = '', priceRange = '', order = 'featured') {
   productsGrid.innerHTML = '<p style="text-align:center;margin-top:40px;">Carregando produtos...</p>';
   
