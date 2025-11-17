@@ -26,7 +26,8 @@ body {
   -webkit-font-smoothing: antialiased;
   font-family: 'Inter', sans-serif;
   -webkit-font-smoothing: antialiased;
-  padding-top: 95px; /* altura do header (logo 77px + paddings) */
+  padding-top: 95px;
+  /* altura do header (logo 77px + paddings) */
 }
 
 .container {
@@ -440,6 +441,88 @@ button {
   font-size: 22px;
   display: inline-block;
   animation: whats-pulse 2.8s infinite
+}
+
+/* admin extras */
+.admin-products {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 70vh;
+  overflow: auto;
+}
+
+.admin-card {
+  background: var(--card);
+  border: 1px solid rgba(255, 255, 255, .08);
+  border-radius: 14px;
+  padding: 12px;
+}
+
+.admin-card summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.admin-card summary img {
+  width: 60px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.admin-form {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.admin-form label {
+  font-size: .9rem;
+  color: var(--muted);
+}
+
+.admin-form input,
+.admin-form textarea,
+.admin-form select {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, .1);
+  background: rgba(255, 255, 255, .04);
+  color: #fff;
+  margin-top: 4px;
+}
+
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+.btn-danger {
+  background: #f44336;
+  color: #fff;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 @keyframes whats-pulse {
