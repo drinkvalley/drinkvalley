@@ -38,13 +38,18 @@ function createImageSlots(containerId, editable = true) {
       </div>
       <img style="display:none;">
       <button type="button" class="remove-btn" onclick="removeImage(${i}, '${containerId}')">×</button>
-      <input type="file" accept="image/*" style="display:none;" ${editable ? `onchange="handleImageSelect(${i}, '${containerId}')"` : ''}>
+      <input type="file" accept="image/*" style="display:none;">
     `;
     
     slot.addEventListener('click', (e) => {
       if (e.target.tagName !== 'BUTTON' && editable) {
         slot.querySelector('input[type="file"]').click();
       }
+    });
+    
+    const fileInput = slot.querySelector('input[type="file"]');
+    fileInput.addEventListener('change', (e) => {
+      handleImageSelect(i, containerId, e);
     });
     
     if (editable) {
@@ -67,6 +72,7 @@ function handleDragStart(e) {
   this.classList.add('dragging');
   e.dataTransfer.effectAllowed = 'move';
   e.dataTransfer.setData('text/html', this.innerHTML);
+  e.dataTransfer.setData('drag-index', this.dataset.index);
 }
 
 function handleDragOver(e) {
@@ -91,28 +97,32 @@ function handleDrop(e) {
   }
   
   if (draggedElement !== this) {
+    const draggedIndex = parseInt(draggedElement.dataset.index);
+    const targetIndex = parseInt(this.dataset.index);
+    
     // Troca o conteúdo dos slots
-    const draggedIndex = draggedElement.dataset.index;
-    const targetIndex = this.dataset.index;
-    
-    const draggedImage = draggedElement.querySelector('img').src;
-    const draggedImageStyle = draggedElement.querySelector('img').style.display;
-    const draggedPlaceholderStyle = draggedElement.querySelector('.placeholder').style.display;
+    const draggedImg = draggedElement.querySelector('img');
+    const draggedPlaceholder = draggedElement.querySelector('.placeholder');
     const draggedHasImage = draggedElement.classList.contains('has-image');
+    const draggedSrc = draggedImg.src;
+    const draggedDisplay = draggedImg.style.display;
+    const draggedPlaceholderDisplay = draggedPlaceholder.style.display;
     
-    const targetImage = this.querySelector('img').src;
-    const targetImageStyle = this.querySelector('img').style.display;
-    const targetPlaceholderStyle = this.querySelector('.placeholder').style.display;
+    const targetImg = this.querySelector('img');
+    const targetPlaceholder = this.querySelector('.placeholder');
     const targetHasImage = this.classList.contains('has-image');
+    const targetSrc = targetImg.src;
+    const targetDisplay = targetImg.style.display;
+    const targetPlaceholderDisplay = targetPlaceholder.style.display;
     
     // Troca imagens
-    this.querySelector('img').src = draggedImage;
-    this.querySelector('img').style.display = draggedImageStyle;
-    this.querySelector('.placeholder').style.display = draggedPlaceholderStyle;
+    targetImg.src = draggedSrc;
+    targetImg.style.display = draggedDisplay;
+    targetPlaceholder.style.display = draggedPlaceholderDisplay;
     
-    draggedElement.querySelector('img').src = targetImage;
-    draggedElement.querySelector('img').style.display = targetImageStyle;
-    draggedElement.querySelector('.placeholder').style.display = targetPlaceholderStyle;
+    draggedImg.src = targetSrc;
+    draggedImg.style.display = targetDisplay;
+    draggedPlaceholder.style.display = targetPlaceholderDisplay;
     
     // Troca classes
     if (draggedHasImage) {
@@ -135,9 +145,29 @@ function handleDrop(e) {
       selectedFiles[targetIndex] = temp;
     } else if (containerId === 'edit-image-slots' && currentEditingProduct) {
       if (!currentEditingProduct.tempFiles) currentEditingProduct.tempFiles = {};
+      if (!currentEditingProduct.originalFiles) currentEditingProduct.originalFiles = {};
+      
+      // Troca arquivos temporários
       const temp = currentEditingProduct.tempFiles[draggedIndex];
       currentEditingProduct.tempFiles[draggedIndex] = currentEditingProduct.tempFiles[targetIndex];
       currentEditingProduct.tempFiles[targetIndex] = temp;
+      
+      // Troca imagens existentes
+      const original = currentEditingProduct.originalFiles[draggedIndex];
+      currentEditingProduct.originalFiles[draggedIndex] = currentEditingProduct.originalFiles[targetIndex];
+      currentEditingProduct.originalFiles[targetIndex] = original;
+      
+      // Troca dados dos slots
+      const draggedData = {
+        existingImage: draggedElement.dataset.existingImage,
+        imageId: draggedElement.dataset.imageId
+      };
+      
+      draggedElement.dataset.existingImage = this.dataset.existingImage;
+      draggedElement.dataset.imageId = this.dataset.imageId;
+      
+      this.dataset.existingImage = draggedData.existingImage;
+      this.dataset.imageId = draggedData.imageId;
     }
   }
   
@@ -153,7 +183,7 @@ function handleDragEnd(e) {
 }
 
 // Handle image selection
-function handleImageSelect(index, containerId) {
+function handleImageSelect(index, containerId, event) {
   const file = event.target.files[0];
   if (!file) return;
   
@@ -175,6 +205,12 @@ function handleImageSelect(index, containerId) {
   } else if (containerId === 'edit-image-slots') {
     if (!currentEditingProduct.tempFiles) currentEditingProduct.tempFiles = {};
     currentEditingProduct.tempFiles[index] = file;
+    
+    // Remove a flag de imagem existente se houver um arquivo novo
+    if (slot.dataset.existingImage) {
+      delete slot.dataset.existingImage;
+      delete slot.dataset.imageId;
+    }
   }
 }
 
@@ -198,6 +234,9 @@ function removeImage(index, containerId) {
     if (currentEditingProduct.tempFiles) {
       currentEditingProduct.tempFiles[index] = null;
     }
+    // Remove dados de imagem existente
+    delete slot.dataset.existingImage;
+    delete slot.dataset.imageId;
   }
 }
 
@@ -360,7 +399,11 @@ async function loadProductImages(productId) {
 
 // Abre modal de edição de imagens
 async function openImageEdit(productId) {
-  currentEditingProduct = { id: productId, tempFiles: {} };
+  currentEditingProduct = { 
+    id: productId, 
+    tempFiles: {},
+    originalFiles: {}
+  };
   
   const modal = document.getElementById('image-edit-modal');
   modal.style.display = 'block';
@@ -386,6 +429,12 @@ async function openImageEdit(productId) {
       slot.classList.add('has-image');
       slot.dataset.existingImage = img.image_path;
       slot.dataset.imageId = img.id;
+      
+      // Salva estado original
+      currentEditingProduct.originalFiles[index] = {
+        image_path: img.image_path,
+        id: img.id
+      };
     });
   }
 }
@@ -396,54 +445,60 @@ document.getElementById('save-images')?.addEventListener('click', async () => {
   
   const { id } = currentEditingProduct;
   const slots = document.querySelectorAll('#edit-image-slots .image-slot');
-  const files = [];
+  const finalOrder = [];
   
-  // Coleta arquivos na ordem atual
+  // Coleta a ordem final dos slots
   slots.forEach((slot, index) => {
     const hasImage = slot.classList.contains('has-image');
     const existingImage = slot.dataset.existingImage;
+    const imageId = slot.dataset.imageId;
     const tempFile = currentEditingProduct.tempFiles?.[index];
     
-    if (tempFile) {
-      files.push({ file: tempFile, isNew: true, index });
-    } else if (existingImage) {
-      files.push({ path: existingImage, isNew: false, index });
+    if (hasImage) {
+      finalOrder.push({
+        index,
+        hasImage: true,
+        existingImage,
+        imageId,
+        tempFile,
+        slot: slot
+      });
     }
   });
   
-  if (files.length === 0) {
+  if (finalOrder.length === 0) {
     document.getElementById('image-edit-modal').style.display = 'none';
     return;
   }
   
-  // Deleta imagens antigas que não estão mais sendo usadas
+  // Deleta todas as imagens antigas e recria na nova ordem
   const { data: oldImages } = await supabase
     .from('product_images')
-    .select('image_path')
+    .select('*')
     .eq('product_id', id);
   
   if (oldImages) {
-    const imagesToDelete = oldImages.filter(oldImg => 
-      !files.some(f => !f.isNew && f.path === oldImg.image_path)
-    );
-    
-    for (const img of imagesToDelete) {
+    for (const img of oldImages) {
       await supabase.storage.from('product-images').remove([img.image_path]);
     }
     await supabase.from('product_images').delete().eq('product_id', id);
   }
   
-  // Upload novas imagens na ordem correta
-  for (let i = 0; i < files.length; i++) {
-    const file = files[i];
+  // Salva na nova ordem
+  for (let i = 0; i < finalOrder.length; i++) {
+    const item = finalOrder[i];
     let filePath;
     
-    if (file.isNew) {
-      filePath = `${Date.now()}_${i}_${file.file.name}`;
-      const { error: upError } = await supabase.storage.from('product-images').upload(filePath, file.file);
+    if (item.tempFile) {
+      // Upload novo arquivo
+      filePath = `${Date.now()}_${i}_${item.tempFile.name}`;
+      const { error: upError } = await supabase.storage.from('product-images').upload(filePath, item.tempFile);
       if (upError) continue;
+    } else if (item.existingImage) {
+      // Reusa imagem existente
+      filePath = item.existingImage;
     } else {
-      filePath = file.path;
+      continue;
     }
     
     await supabase.from('product_images').insert([{
@@ -462,7 +517,7 @@ document.getElementById('save-images')?.addEventListener('click', async () => {
   
   document.getElementById('image-edit-modal').style.display = 'none';
   loadProducts();
-  alert('Imagens atualizadas com sucesso!');
+  alert('Imagens reordenadas com sucesso!');
 });
 
 // Cancela edição de imagens
@@ -530,5 +585,4 @@ loadCategories();
 
 // Torna as funções globais para serem chamadas pelos eventos onclick
 window.removeImage = removeImage;
-window.handleImageSelect = handleImageSelect;
 window.openImageEdit = openImageEdit;
