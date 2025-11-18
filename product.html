@@ -8,20 +8,59 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css" />
   <script type="module" src="product.js" defer></script>
-    <link rel="shortcut icon" href="images/logoDrinkValley.png" type="image/x-icon">
+  <link rel="shortcut icon" href="images/logoDrinkValley.png" type="image/x-icon">
 
 </head>
 <body>
   <header class="site-header">
     <div class="container header-inner">
       <a class="logo-link" href="/"><img src="images/logoDrinkValley.png" alt="DrinkValley" class="logo-img" /></a>
-      <div class="search-center"><a href="/" class="link-muted">Voltar</a></div>
-      <div class="controls-right"></div>
+      <div class="search-center"><a href="/" class="link-muted">← Voltar à loja</a></div>
+      <div class="controls-right">
+        <button id="cart-toggle" class="btn-ghost">
+          🛒 <span id="cart-count">0</span>
+        </button>
+      </div>
     </div>
   </header>
 
   <main class="container product-page">
     <div id="product-detail" class="product-detail">Carregando...</div>
+    
+    <!-- Seção de avaliações -->
+    <section class="reviews-section">
+      <h3>Avaliações dos Clientes</h3>
+      <div id="reviews" class="reviews-container"></div>
+      
+      <form id="review-form" class="review-form">
+        <h4>Deixe sua avaliação</h4>
+        <div class="form-group">
+          <label for="name">Nome:</label>
+          <input type="text" id="name" name="name" required>
+        </div>
+        <div class="form-group">
+          <label for="rating">Avaliação:</label>
+          <select id="rating" name="rating" required>
+            <option value="5">5 - Excelente</option>
+            <option value="4">4 - Muito bom</option>
+            <option value="3">3 - Bom</option>
+            <option value="2">2 - Regular</option>
+            <option value="1">1 - Ruim</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="comment">Comentário:</label>
+          <textarea id="comment" name="comment" rows="3"></textarea>
+        </div>
+        <button type="submit" class="btn-primary">Enviar Avaliação</button>
+      </form>
+    </section>
+
+    <!-- Produtos relacionados -->
+    <section class="related-products">
+      <h3>Quem viu este produto também se interessou por:</h3>
+      <div id="related-products-grid" class="products-grid"></div>
+    </section>
   </main>
 
   <aside id="mini-cart" class="mini-cart" aria-hidden="true">
@@ -39,5 +78,8 @@
   <a id="whatsapp-btn" href="https://wa.me/5551998811587" target="_blank" rel="noopener" aria-label="Fale conosco no WhatsApp">
     <span class="whats-emoji">💬</span>
   </a>
+
+  <!-- Toast notification -->
+  <div id="toast" class="toast hidden"></div>
 </body>
 </html>
