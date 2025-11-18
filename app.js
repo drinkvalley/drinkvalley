@@ -1,4 +1,5 @@
 // app.js - DrinkValley versão 2.3 (Corrigido: Destaques funcionando)
+import { inject } from "@vercel/analytics"
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
 // Substitua com suas credenciais
