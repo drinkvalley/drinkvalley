@@ -34,6 +34,123 @@
     .actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 10px; }
     .btn-danger { background: var(--danger); color: #fff; border: none; padding: 8px 14px; border-radius: 8px; cursor: pointer; }
     .check { display: flex; align-items: center; gap: 6px; }
+
+    /* Novos estilos para upload de imagens */
+    .image-slots { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin: 12px 0; }
+    .image-slot {
+      aspect-ratio: 1;
+      border: 2px dashed rgba(255,255,255,0.2);
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      position: relative;
+      background: rgba(255,255,255,.02);
+      user-select: none;
+    }
+    .image-slot:hover { border-color: var(--accent); background: rgba(246,176,70,.05); }
+    .image-slot.has-image { border-style: solid; border-color: var(--accent); }
+    .image-slot img { width: 100%; height: 100%; object-fit: cover; border-radius: 10px; }
+    .image-slot .placeholder {
+      color: var(--muted);
+      font-size: 0.8rem;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .image-slot .placeholder::before { content: "📷"; font-size: 1.5rem; }
+    .image-slot .remove-btn {
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      background: var(--danger);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      font-size: 14px;
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+    }
+    .image-slot.has-image .remove-btn { display: flex; }
+    .image-slot.drag-over { border-color: var(--accent); background: rgba(246,176,70,.1); transform: scale(1.05); }
+
+    /* Botões melhorados */
+    .btn-primary {
+      background: var(--accent);
+      color: #000;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-size: 1rem;
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(246,176,70,.3); }
+    .btn-secondary {
+      background: rgba(255,255,255,.1);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,.2);
+      padding: 12px 24px;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    .btn-secondary:hover { background: rgba(255,255,255,.15); }
+
+    .edit-images-btn {
+      background: rgba(255,255,255,.1);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,.2);
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin-top: 12px;
+    }
+    .edit-images-btn:hover { background: rgba(255,255,255,.15); }
+
+    .image-preview-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+      margin: 12px 0;
+    }
+    .image-preview-item {
+      aspect-ratio: 1;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,.1);
+    }
+    .image-preview-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    /* Drag and drop */
+    .image-slot[draggable="true"] {
+      cursor: move;
+    }
+    .image-slot[draggable="true"]:hover {
+      box-shadow: 0 4px 12px rgba(255,255,255,.1);
+    }
+    .image-slot.dragging {
+      opacity: 0.5;
+      transform: rotate(5deg);
+    }
   </style>
   <script type="module" src="admin.js" defer></script>
   <link rel="shortcut icon" href="images/logoDrinkValley.png" type="image/x-icon">
@@ -74,9 +191,10 @@
           </div>
           <label class="check"><input type="checkbox" name="is_featured"> Destaque</label>
 
-          <label>Imagens (pilha):</label>
-          <input type="file" id="product-images" accept="image/*" multiple required>
-          <div id="preview-images" style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"></div>
+          <label>Imagens do produto (mínimo 1):</label>
+          <div class="image-slots" id="image-slots">
+            <!-- Slots serão criados pelo JavaScript -->
+          </div>
 
           <button type="submit" class="btn-primary">Cadastrar Produto</button>
         </form>
@@ -93,10 +211,23 @@
           <h4 style="margin-top:12px">Produtos cadastrados</h4>
           <div id="products-list" class="admin-products"></div>
 
-          <button id="logout-btn" class="btn-primary" style="margin-top:12px">Sair</button>
+          <button id="logout-btn" class="btn-secondary" style="margin-top:12px">Sair</button>
         </div>
       </div>
     </section>
   </main>
+
+  <!-- Modal para editar imagens -->
+  <div id="image-edit-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:1000;">
+    <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:var(--card); padding:24px; border-radius:20px; max-width:600px; width:90%;">
+      <h3>Editar Imagens</h3>
+      <p style="color: var(--muted); font-size: 0.9rem; margin-bottom: 16px;">Arraste os slots para reordenar as imagens</p>
+      <div class="image-slots" id="edit-image-slots"></div>
+      <div style="display:flex; gap:12px; justify-content:flex-end; margin-top:24px;">
+        <button id="cancel-image-edit" class="btn-secondary">Cancelar</button>
+        <button id="save-images" class="btn-primary">Salvar Imagens</button>
+      </div>
+    </div>
+  </div>
 </body>
 </html>

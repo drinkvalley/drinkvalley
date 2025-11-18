@@ -11,26 +11,195 @@ const adminArea = document.getElementById('admin-area');
 const newProductForm = document.getElementById('new-product-form');
 const productsList = document.getElementById('products-list');
 const categorySelect = newProductForm.querySelector('select[name="category_id"]');
-const previewImages = document.getElementById('preview-images');
-const imagesInput = document.getElementById('product-images');
 const countProducts = document.getElementById('count-products');
 const countOrders = document.getElementById('count-orders');
 const countSales = document.getElementById('count-sales');
 
-let selectedFiles = [];
+let selectedFiles = new Array(5).fill(null);
+let currentEditingProduct = null;
+let draggedElement = null;
 
-// preview das imagens do novo produto
-imagesInput.addEventListener('change', e => {
-  previewImages.innerHTML = '';
-  selectedFiles = Array.from(e.target.files || []);
-  selectedFiles.forEach(f => {
-    const url = URL.createObjectURL(f);
-    const img = document.createElement('img');
-    img.src = url;
-    Object.assign(img.style, { width: '70px', height: '70px', objectFit: 'cover', borderRadius: '8px' });
-    previewImages.appendChild(img);
+// Cria slots de imagem
+function createImageSlots(containerId, editable = true) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = '';
+  
+  for (let i = 0; i < 5; i++) {
+    const slot = document.createElement('div');
+    slot.className = 'image-slot';
+    slot.dataset.index = i;
+    if (editable) {
+      slot.draggable = true;
+    }
+    
+    slot.innerHTML = `
+      <div class="placeholder">
+        <span>Imagem ${i + 1}</span>
+      </div>
+      <img style="display:none;">
+      <button type="button" class="remove-btn" onclick="removeImage(${i}, '${containerId}')">×</button>
+      <input type="file" accept="image/*" style="display:none;" ${editable ? `onchange="handleImageSelect(${i}, '${containerId}')"` : ''}>
+    `;
+    
+    slot.addEventListener('click', (e) => {
+      if (e.target.tagName !== 'BUTTON' && editable) {
+        slot.querySelector('input[type="file"]').click();
+      }
+    });
+    
+    if (editable) {
+      // Eventos de drag and drop
+      slot.addEventListener('dragstart', handleDragStart);
+      slot.addEventListener('dragover', handleDragOver);
+      slot.addEventListener('drop', handleDrop);
+      slot.addEventListener('dragend', handleDragEnd);
+      slot.addEventListener('dragenter', handleDragEnter);
+      slot.addEventListener('dragleave', handleDragLeave);
+    }
+    
+    container.appendChild(slot);
+  }
+}
+
+// Drag and drop handlers
+function handleDragStart(e) {
+  draggedElement = this;
+  this.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/html', this.innerHTML);
+}
+
+function handleDragOver(e) {
+  if (e.preventDefault) {
+    e.preventDefault();
+  }
+  e.dataTransfer.dropEffect = 'move';
+  return false;
+}
+
+function handleDragEnter(e) {
+  this.classList.add('drag-over');
+}
+
+function handleDragLeave(e) {
+  this.classList.remove('drag-over');
+}
+
+function handleDrop(e) {
+  if (e.stopPropagation) {
+    e.stopPropagation();
+  }
+  
+  if (draggedElement !== this) {
+    // Troca o conteúdo dos slots
+    const draggedIndex = draggedElement.dataset.index;
+    const targetIndex = this.dataset.index;
+    
+    const draggedImage = draggedElement.querySelector('img').src;
+    const draggedImageStyle = draggedElement.querySelector('img').style.display;
+    const draggedPlaceholderStyle = draggedElement.querySelector('.placeholder').style.display;
+    const draggedHasImage = draggedElement.classList.contains('has-image');
+    
+    const targetImage = this.querySelector('img').src;
+    const targetImageStyle = this.querySelector('img').style.display;
+    const targetPlaceholderStyle = this.querySelector('.placeholder').style.display;
+    const targetHasImage = this.classList.contains('has-image');
+    
+    // Troca imagens
+    this.querySelector('img').src = draggedImage;
+    this.querySelector('img').style.display = draggedImageStyle;
+    this.querySelector('.placeholder').style.display = draggedPlaceholderStyle;
+    
+    draggedElement.querySelector('img').src = targetImage;
+    draggedElement.querySelector('img').style.display = targetImageStyle;
+    draggedElement.querySelector('.placeholder').style.display = targetPlaceholderStyle;
+    
+    // Troca classes
+    if (draggedHasImage) {
+      this.classList.add('has-image');
+    } else {
+      this.classList.remove('has-image');
+    }
+    
+    if (targetHasImage) {
+      draggedElement.classList.add('has-image');
+    } else {
+      draggedElement.classList.remove('has-image');
+    }
+    
+    // Troca os dados dos arquivos
+    const containerId = this.closest('.image-slots').id;
+    if (containerId === 'image-slots') {
+      const temp = selectedFiles[draggedIndex];
+      selectedFiles[draggedIndex] = selectedFiles[targetIndex];
+      selectedFiles[targetIndex] = temp;
+    } else if (containerId === 'edit-image-slots' && currentEditingProduct) {
+      if (!currentEditingProduct.tempFiles) currentEditingProduct.tempFiles = {};
+      const temp = currentEditingProduct.tempFiles[draggedIndex];
+      currentEditingProduct.tempFiles[draggedIndex] = currentEditingProduct.tempFiles[targetIndex];
+      currentEditingProduct.tempFiles[targetIndex] = temp;
+    }
+  }
+  
+  this.classList.remove('drag-over');
+  return false;
+}
+
+function handleDragEnd(e) {
+  this.classList.remove('dragging');
+  document.querySelectorAll('.image-slot').forEach(slot => {
+    slot.classList.remove('drag-over');
   });
-});
+}
+
+// Handle image selection
+function handleImageSelect(index, containerId) {
+  const file = event.target.files[0];
+  if (!file) return;
+  
+  const slot = document.querySelector(`#${containerId} .image-slot[data-index="${index}"]`);
+  const img = slot.querySelector('img');
+  const placeholder = slot.querySelector('.placeholder');
+  
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    img.src = e.target.result;
+    img.style.display = 'block';
+    placeholder.style.display = 'none';
+    slot.classList.add('has-image');
+  };
+  reader.readAsDataURL(file);
+  
+  if (containerId === 'image-slots') {
+    selectedFiles[index] = file;
+  } else if (containerId === 'edit-image-slots') {
+    if (!currentEditingProduct.tempFiles) currentEditingProduct.tempFiles = {};
+    currentEditingProduct.tempFiles[index] = file;
+  }
+}
+
+// Remove image
+function removeImage(index, containerId) {
+  event.stopPropagation();
+  
+  const slot = document.querySelector(`#${containerId} .image-slot[data-index="${index}"]`);
+  const img = slot.querySelector('img');
+  const placeholder = slot.querySelector('.placeholder');
+  const fileInput = slot.querySelector('input[type="file"]');
+  
+  img.style.display = 'none';
+  placeholder.style.display = 'flex';
+  slot.classList.remove('has-image');
+  fileInput.value = '';
+  
+  if (containerId === 'image-slots') {
+    selectedFiles[index] = null;
+  } else if (containerId === 'edit-image-slots') {
+    if (currentEditingProduct.tempFiles) {
+      currentEditingProduct.tempFiles[index] = null;
+    }
+  }
+}
 
 // login
 loginForm.addEventListener('submit', async e => {
@@ -45,6 +214,7 @@ loginForm.addEventListener('submit', async e => {
   await loadCategories();
   await loadProducts();
   await loadDashboard();
+  createImageSlots('image-slots');
 });
 
 // logout
@@ -110,6 +280,14 @@ async function loadProducts() {
           <input type="checkbox" name="is_featured" ${p.is_featured ? 'checked' : ''}> Destaque
         </label>
 
+        <div class="image-preview-grid" id="images-${p.id}">
+          <!-- Imagens serão carregadas aqui -->
+        </div>
+
+        <button type="button" class="edit-images-btn" onclick="openImageEdit('${p.id}')">
+          📷 Editar Imagens
+        </button>
+
         <div class="actions">
           <button type="submit" class="btn-primary">Salvar</button>
           <button type="button" class="btn-danger" data-del="${p.id}">Excluir</button>
@@ -117,6 +295,11 @@ async function loadProducts() {
       </form>
     </details>
   `).join('');
+
+  // Carrega imagens para cada produto
+  for (const product of data) {
+    await loadProductImages(product.id);
+  }
 
   // preenche categorias
   document.querySelectorAll('.admin-form select[name="category_id"]').forEach(sel => {
@@ -157,11 +340,144 @@ async function loadProducts() {
   );
 }
 
+// Carrega imagens do produto
+async function loadProductImages(productId) {
+  const { data: images } = await supabase
+    .from('product_images')
+    .select('*')
+    .eq('product_id', productId)
+    .order('position');
+
+  const container = document.getElementById(`images-${productId}`);
+  if (!container) return;
+
+  container.innerHTML = images?.map(img => `
+    <div class="image-preview-item">
+      <img src="${SUPABASE_URL}/storage/v1/object/public/product-images/${img.image_path}" alt="Imagem do produto">
+    </div>
+  `).join('') || '';
+}
+
+// Abre modal de edição de imagens
+async function openImageEdit(productId) {
+  currentEditingProduct = { id: productId, tempFiles: {} };
+  
+  const modal = document.getElementById('image-edit-modal');
+  modal.style.display = 'block';
+  
+  createImageSlots('edit-image-slots');
+  
+  // Carrega imagens existentes
+  const { data: images } = await supabase
+    .from('product_images')
+    .select('*')
+    .eq('product_id', productId)
+    .order('position');
+  
+  if (images) {
+    images.forEach((img, index) => {
+      const slot = document.querySelector(`#edit-image-slots .image-slot[data-index="${index}"]`);
+      const imgEl = slot.querySelector('img');
+      const placeholder = slot.querySelector('.placeholder');
+      
+      imgEl.src = `${SUPABASE_URL}/storage/v1/object/public/product-images/${img.image_path}`;
+      imgEl.style.display = 'block';
+      placeholder.style.display = 'none';
+      slot.classList.add('has-image');
+      slot.dataset.existingImage = img.image_path;
+      slot.dataset.imageId = img.id;
+    });
+  }
+}
+
+// Salva imagens editadas
+document.getElementById('save-images')?.addEventListener('click', async () => {
+  if (!currentEditingProduct) return;
+  
+  const { id } = currentEditingProduct;
+  const slots = document.querySelectorAll('#edit-image-slots .image-slot');
+  const files = [];
+  
+  // Coleta arquivos na ordem atual
+  slots.forEach((slot, index) => {
+    const hasImage = slot.classList.contains('has-image');
+    const existingImage = slot.dataset.existingImage;
+    const tempFile = currentEditingProduct.tempFiles?.[index];
+    
+    if (tempFile) {
+      files.push({ file: tempFile, isNew: true, index });
+    } else if (existingImage) {
+      files.push({ path: existingImage, isNew: false, index });
+    }
+  });
+  
+  if (files.length === 0) {
+    document.getElementById('image-edit-modal').style.display = 'none';
+    return;
+  }
+  
+  // Deleta imagens antigas que não estão mais sendo usadas
+  const { data: oldImages } = await supabase
+    .from('product_images')
+    .select('image_path')
+    .eq('product_id', id);
+  
+  if (oldImages) {
+    const imagesToDelete = oldImages.filter(oldImg => 
+      !files.some(f => !f.isNew && f.path === oldImg.image_path)
+    );
+    
+    for (const img of imagesToDelete) {
+      await supabase.storage.from('product-images').remove([img.image_path]);
+    }
+    await supabase.from('product_images').delete().eq('product_id', id);
+  }
+  
+  // Upload novas imagens na ordem correta
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    let filePath;
+    
+    if (file.isNew) {
+      filePath = `${Date.now()}_${i}_${file.file.name}`;
+      const { error: upError } = await supabase.storage.from('product-images').upload(filePath, file.file);
+      if (upError) continue;
+    } else {
+      filePath = file.path;
+    }
+    
+    await supabase.from('product_images').insert([{
+      product_id: id,
+      image_path: filePath,
+      position: i
+    }]);
+    
+    if (i === 0) {
+      await supabase.from('products').update({
+        image_path: filePath,
+        thumbnail: filePath
+      }).eq('id', id);
+    }
+  }
+  
+  document.getElementById('image-edit-modal').style.display = 'none';
+  loadProducts();
+  alert('Imagens atualizadas com sucesso!');
+});
+
+// Cancela edição de imagens
+document.getElementById('cancel-image-edit')?.addEventListener('click', () => {
+  document.getElementById('image-edit-modal').style.display = 'none';
+  currentEditingProduct = null;
+});
+
 // cadastro novo produto
 newProductForm.addEventListener('submit', async e => {
   e.preventDefault();
-  if (!selectedFiles.length) return alert('Escolha pelo menos 1 imagem');
-
+  
+  const hasImages = selectedFiles.some(f => f);
+  if (!hasImages) return alert('Escolha pelo menos 1 imagem');
+  
   const payload = {
     title: newProductForm.title.value,
     slug: newProductForm.slug.value,
@@ -176,26 +492,43 @@ newProductForm.addEventListener('submit', async e => {
     thumbnail: null,
     is_featured: newProductForm.querySelector('[name="is_featured"]').checked
   };
-
+  
   const { data: product, error } = await supabase.from('products').insert([payload]).select().single();
   if (error || !product) return alert('Erro ao criar produto');
-
-  for (let i = 0; i < selectedFiles.length; i++) {
-    const file = selectedFiles[i];
+  
+  const validFiles = selectedFiles.filter(f => f);
+  for (let i = 0; i < validFiles.length; i++) {
+    const file = validFiles[i];
     const filePath = `${Date.now()}_${i}_${file.name}`;
     const { error: upError } = await supabase.storage.from('product-images').upload(filePath, file);
     if (upError) continue;
-    await supabase.from('product_images').insert([{ product_id: product.id, image_path: filePath, position: i }]);
-    if (i === 0) await supabase.from('products').update({ image_path: filePath, thumbnail: filePath }).eq('id', product.id);
+    
+    await supabase.from('product_images').insert([{
+      product_id: product.id,
+      image_path: filePath,
+      position: i
+    }]);
+    
+    if (i === 0) {
+      await supabase.from('products').update({
+        image_path: filePath,
+        thumbnail: filePath
+      }).eq('id', product.id);
+    }
   }
-
+  
   alert('Produto cadastrado com imagens!');
   newProductForm.reset();
-  previewImages.innerHTML = '';
-  selectedFiles = [];
+  selectedFiles = new Array(5).fill(null);
+  createImageSlots('image-slots');
   loadProducts();
   loadDashboard();
 });
 
 // carga inicial
 loadCategories();
+
+// Torna as funções globais para serem chamadas pelos eventos onclick
+window.removeImage = removeImage;
+window.handleImageSelect = handleImageSelect;
+window.openImageEdit = openImageEdit;
