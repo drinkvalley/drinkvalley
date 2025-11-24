@@ -831,7 +831,7 @@ button {
 
 #cart-count {
   position: absolute;
-  top: -8px;
+  top: 8px;
   right: -8px;
   background: var(--accent);
   color: var(--bg);
