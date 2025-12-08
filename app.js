@@ -1,5 +1,5 @@
 // app.js - DrinkValley versão 2.3 (Corrigido: Destaques funcionando)
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 // Substitua com suas credenciais
 const SUPABASE_URL = 'https://qepishfrgwynpuazirmj.supabase.co';
