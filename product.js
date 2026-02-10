@@ -1,4 +1,4 @@
-// product.js - página de detalhe com carrossel
+// product.js - página de detalhe com carrossel para bebidas e pods
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const SUPABASE_URL = 'https://qepishfrgwynpuazirmj.supabase.co';
@@ -39,11 +39,32 @@ async function load(){
   const { data: imgs } = await supabase.from('product_images').select('image_path').eq('product_id', data.id).order('position', {ascending:true});
   const images = (imgs && imgs.length) ? imgs.map(i=>i.image_path) : (data.image_path ? [data.image_path] : []);
 
+  // Identificar se é pod ou bebida
+  const isPod = data.pod_flavor || data.pod_strength || data.pod_puffs;
+  
   // Informações adicionais do produto
-  const volume = data.volume ? `${data.volume}ml` : '';
-  const alcohol = data.alcohol_content ? `${data.alcohol_content}% ABV` : '';
-  const origin = data.origin ? `Origem: ${data.origin}` : '';
-  const category = data.category ? data.category : '';
+  let specs = [];
+  
+  if (isPod) {
+    // ESPECIFICAÇÕES DE PODS
+    if (data.pod_flavor) specs.push({ label: 'Sabor', value: data.pod_flavor });
+    if (data.pod_strength) specs.push({ label: 'Força', value: data.pod_strength });
+    if (data.pod_puffs) specs.push({ label: 'Puffs', value: `${data.pod_puffs} puffs` });
+    if (data.pod_capacity) specs.push({ label: 'Capacidade', value: `${data.pod_capacity}ml` });
+  } else {
+    // ESPECIFICAÇÕES DE BEBIDAS
+    if (data.volume_ml) specs.push({ label: 'Volume', value: `${data.volume_ml}ml` });
+    if (data.abv) specs.push({ label: 'Teor Alcoólico', value: `${data.abv}% ABV` });
+  }
+  
+  if (data.origin) specs.push({ label: 'Origem', value: data.origin });
+
+  // Buscar categoria
+  const { data: category } = await supabase
+    .from('categories')
+    .select('name')
+    .eq('id', data.category_id)
+    .single();
 
   el.innerHTML = `
     <div class="product-gallery">
@@ -72,7 +93,8 @@ async function load(){
     <div class="product-info">
       <div class="product-header">
         <h1 class="product-title">${data.title}</h1>
-        ${category ? `<span class="product-category">${category}</span>` : ''}
+        ${category ? `<span class="product-category">${category.name}</span>` : ''}
+        ${isPod ? '<span class="product-type-badge pod-badge">💨 POD</span>' : '<span class="product-type-badge drink-badge">🍾 BEBIDA</span>'}
       </div>
       
       <div class="product-pricing">
@@ -81,9 +103,12 @@ async function load(){
       </div>
       
       <div class="product-specs">
-        ${volume ? `<div class="spec-item"><span class="spec-label">Volume:</span> ${volume}</div>` : ''}
-        ${alcohol ? `<div class="spec-item"><span class="spec-label">Teor Alcoólico:</span> ${alcohol}</div>` : ''}
-        ${origin ? `<div class="spec-item"><span class="spec-label">${origin}</span></div>` : ''}
+        ${specs.map(spec => `
+          <div class="spec-item">
+            <span class="spec-label">${spec.label}:</span>
+            <span class="spec-value">${spec.value}</span>
+          </div>
+        `).join('')}
       </div>
       
       <div class="product-description">
@@ -114,6 +139,12 @@ async function load(){
           <span class="payment-icon">💳</span>
           <span>Parcele em até 12x sem juros</span>
         </div>
+        ${isPod ? `
+          <div class="warning-info">
+            <span class="warning-icon">⚠️</span>
+            <span>Produto com nicotina. Apenas para maiores de 18 anos.</span>
+          </div>
+        ` : ''}
       </div>
     </div>
   `;
@@ -163,13 +194,15 @@ async function load(){
   });
 
   loadReviews(data.id);
-  loadRelatedProducts(data.category_id, data.id);
+  loadRelatedProducts(data.category_id, data.id, isPod);
   updateCartCount();
 }
 
-async function loadRelatedProducts(category_id, currentProductId){
-  console.log('🔍 Buscando produtos da categoria_id:', category_id);
-  console.log('📦 ID atual:', currentProductId);
+async function loadRelatedProducts(category_id, currentProductId, isPod){
+  console.log('🔍 Buscando produtos relacionados...');
+  console.log('📦 Categoria ID:', category_id);
+  console.log('🆔 Produto atual ID:', currentProductId);
+  console.log('💨 É pod?', isPod);
   
   if (!category_id) {
     console.log('❌ category_id vazio');
@@ -177,10 +210,12 @@ async function loadRelatedProducts(category_id, currentProductId){
   }
   
   try {
+    // Buscar produtos da mesma categoria, excluindo o atual
     const { data: products, error } = await supabase
       .from('products')
-      .select('id, title, slug, price, image_path, category_id')
-      .eq('category_id', category_id) // Agora usa o ID numérico correto
+      .select('id, title, slug, price, image_path, category_id, pod_flavor, volume_ml')
+      .eq('category_id', category_id)
+      .eq('is_archived', false)
       .neq('id', currentProductId)
       .limit(4);
       
@@ -202,17 +237,23 @@ async function loadRelatedProducts(category_id, currentProductId){
     }
     
     const grid = document.getElementById('related-products-grid');
-    grid.innerHTML = products.map(product => `
-      <div class="card related-card">
-        <a href="/product.html?slug=${product.slug}" class="card-link">
-          <div class="card-thumb">
-            <img src="${getPublicUrl(product.image_path)}" alt="${product.title}" />
-          </div>
-          <h3 class="product-title">${product.title}</h3>
-          <div class="price">R$ ${formatBRL(product.price)}</div>
-        </a>
-      </div>
-    `).join('');
+    grid.innerHTML = products.map(product => {
+      const isProductPod = product.pod_flavor || product.volume_ml === null;
+      const typeBadge = isProductPod ? '<div class="badge pod-badge">💨 POD</div>' : '<div class="badge drink-badge">🍾</div>';
+      
+      return `
+        <div class="card related-card">
+          <a href="/product.html?slug=${product.slug}" class="card-link">
+            <div class="card-thumb">
+              <img src="${getPublicUrl(product.image_path)}" alt="${product.title}" />
+              ${typeBadge}
+            </div>
+            <h3 class="product-title">${product.title}</h3>
+            <div class="price">R$ ${formatBRL(product.price)}</div>
+          </a>
+        </div>
+      `;
+    }).join('');
     
   } catch (err) {
     console.log('💥 Erro geral:', err);
@@ -288,4 +329,4 @@ document.getElementById('close-mini-cart')?.addEventListener('click', () => {
   miniCart.setAttribute('aria-hidden', 'true');
 });
 
-load();
+load();w

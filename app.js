@@ -1,7 +1,6 @@
-// app.js - DrinkValley versão 2.3 (Corrigido: Destaques funcionando)
+// app.js - DrinkValley versão 2.4 (com filtro de arquivados)
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-// Substitua com suas credenciais
 const SUPABASE_URL = 'https://qepishfrgwynpuazirmj.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFlcGlzaGZyZ3d5bnB1YXppcm1qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI3OTgyNDEsImV4cCI6MjA3ODM3NDI0MX0.MQ-qoQESAaXk_rzYaemvP3pXHySp8u4hH3GW-7YT5_g';
 
@@ -10,7 +9,6 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
 // DOM refs
 const productsGrid = document.getElementById('products-grid');
 const featuredGrid = document.getElementById('featured-grid');
-const categoriesGrid = document.querySelectorAll('#categories-grid');
 const searchInput = document.getElementById('search');
 const filterCategory = document.getElementById('filter-category');
 const filterPrice = document.getElementById('filter-price');
@@ -108,9 +106,7 @@ function renderMiniCart() {
   renderCounts();
 }
 
-// 🎯 FUNÇÃO REUTILIZÁVEL PARA AMBOS OS GRIDS
 async function handleProductCardClick(e) {
-  // Clique no card (ver detalhes)
   const card = e.target.closest('.card');
   if (card && !e.target.closest('[data-add]') && !e.target.closest('[data-wish]')) {
     const slug = card.dataset.slug;
@@ -118,7 +114,6 @@ async function handleProductCardClick(e) {
     return;
   }
 
-  // Adicionar ao carrinho
   const addId = e.target.closest('[data-add]')?.dataset.add;
   if (addId) {
     const { data } = await supabase.from('products').select('id,title,price,image_path,thumbnail,stock').eq('id', addId).single();
@@ -139,7 +134,6 @@ async function handleProductCardClick(e) {
     toast('Produto adicionado ao carrinho ✅');
   }
 
-  // Favoritar
   const wid = e.target.closest('[data-wish]')?.dataset.wish;
   if (wid) {
     const id = Number(wid);
@@ -152,11 +146,9 @@ async function handleProductCardClick(e) {
   }
 }
 
-// 🎯 ATACHAR EVENT LISTENER A AMBOS OS GRIDS
 productsGrid?.addEventListener('click', handleProductCardClick);
 featuredGrid?.addEventListener('click', handleProductCardClick);
 
-// Wishlist popup
 wishlistBtn?.addEventListener('click', async () => {
   if (!WISHLIST.length) return toast('Nenhum favorito');
   
@@ -180,7 +172,6 @@ wishlistBtn?.addEventListener('click', async () => {
   `);
 });
 
-// Mini-cart controls
 miniCartBtn?.addEventListener('click', () => miniCart.setAttribute('aria-hidden', 'false'));
 closeMiniCart?.addEventListener('click', () => miniCart.setAttribute('aria-hidden', 'true'));
 
@@ -211,7 +202,6 @@ function removeFromCart(id) {
   saveCart(); 
 }
 
-// 🎯 FINALIZAR COMPRA → WHATSAPP DIRETO
 goCheckout?.addEventListener('click', () => {
   if (!CART.length) return toast('Carrinho vazio');
   
@@ -231,19 +221,16 @@ goCheckout?.addEventListener('click', () => {
   toast('Pedido enviado via WhatsApp ✅');
 });
 
-// Filters
 searchInput?.addEventListener('input', () => loadProducts(searchInput.value, filterCategory.value, filterPrice.value, filterOrder.value));
 filterCategory?.addEventListener('change', () => loadProducts(searchInput.value, filterCategory.value, filterPrice.value, filterOrder.value));
 filterPrice?.addEventListener('change', () => loadProducts(searchInput.value, filterCategory.value, filterPrice.value, filterOrder.value));
 filterOrder?.addEventListener('change', () => loadProducts(searchInput.value, filterCategory.value, filterPrice.value, filterOrder.value));
 
-// Initial load
 renderMiniCart();
 renderCounts();
 loadCategories();
 loadProducts();
 
-// Data loading functions
 async function loadCategories() {
   const { data } = await supabase.from('categories').select('*').order('name');
   if (!data) return;
@@ -263,8 +250,8 @@ async function loadCategories() {
 async function loadProducts(q = '', categoryId = '', priceRange = '', order = 'featured') {
   productsGrid.innerHTML = '<p style="text-align:center;margin-top:40px;">Carregando produtos...</p>';
   
-  const select = 'id,title,price,compare_at_price,image_path,thumbnail,slug,is_featured,category_id,created_at';
-  let builder = supabase.from('products').select(select).ilike('title', `%${q}%`);
+  const select = 'id,title,price,compare_at_price,image_path,thumbnail,slug,is_featured,category_id,created_at,archived';
+  let builder = supabase.from('products').select(select).ilike('title', `%${q}%`).eq('archived', false);
   
   if (categoryId) builder = builder.eq('category_id', categoryId);
   
@@ -287,6 +274,8 @@ async function loadProducts(q = '', categoryId = '', priceRange = '', order = 'f
   }
   
   const featured = data.filter(p => p.is_featured).slice(0, 6);
-  featuredGrid.innerHTML = featured.map(productCard).join('') || '<p class="muted">Nenhum destaque</p>';
+  if (featuredGrid) {
+    featuredGrid.innerHTML = featured.map(productCard).join('') || '<p class="muted">Nenhum destaque</p>';
+  }
   productsGrid.innerHTML = data.map(productCard).join('') || '<p class="muted">Nenhum produto</p>';
 }

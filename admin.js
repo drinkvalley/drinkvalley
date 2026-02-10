@@ -5,12 +5,13 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
 
-// refs
+// DOM refs
 const loginForm = document.getElementById('login-form');
 const adminArea = document.getElementById('admin-area');
 const newProductForm = document.getElementById('new-product-form');
 const productsList = document.getElementById('products-list');
-const categorySelect = newProductForm.querySelector('select[name="category_id"]');
+const archivedList = document.getElementById('archived-list');
+const categorySelect = newProductForm?.querySelector('select[name="category_id"]');
 const countProducts = document.getElementById('count-products');
 const countOrders = document.getElementById('count-orders');
 const countSales = document.getElementById('count-sales');
@@ -19,18 +20,62 @@ let selectedFiles = new Array(5).fill(null);
 let currentEditingProduct = null;
 let draggedElement = null;
 
-// Cria slots de imagem
+// Login
+loginForm?.addEventListener('submit', async e => {
+  e.preventDefault();
+  const email = loginForm.email.value;
+  const password = loginForm.password.value;
+  
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  
+  if (error) {
+    alert('Erro no login: ' + error.message);
+    return;
+  }
+  
+  loginForm.style.display = 'none';
+  adminArea.style.display = 'block';
+  
+  loadDashboard();
+  loadProducts();
+  loadArchivedProducts();
+});
+
+// Logout
+document.getElementById('logout-btn')?.addEventListener('click', async () => {
+  await supabase.auth.signOut();
+  location.reload();
+});
+
+// Dashboard
+async function loadDashboard() {
+  const { count } = await supabase.from('products').select('*', { count: 'exact', head: true }).eq('archived', false);
+  if (countProducts) countProducts.textContent = count || 0;
+  if (countOrders) countOrders.textContent = '0';
+  if (countSales) countSales.textContent = '0.00';
+}
+
+// Load categories
+async function loadCategories() {
+  const { data } = await supabase.from('categories').select('*').order('name');
+  if (!data || !categorySelect) return;
+  
+  categorySelect.innerHTML = `<option value="">Selecione...</option>` + 
+    data.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+}
+
+// Image slots
 function createImageSlots(containerId, editable = true) {
   const container = document.getElementById(containerId);
+  if (!container) return;
+  
   container.innerHTML = '';
   
   for (let i = 0; i < 5; i++) {
     const slot = document.createElement('div');
     slot.className = 'image-slot';
     slot.dataset.index = i;
-    if (editable) {
-      slot.draggable = true;
-    }
+    if (editable) slot.draggable = true;
     
     slot.innerHTML = `
       <div class="placeholder">
@@ -48,12 +93,9 @@ function createImageSlots(containerId, editable = true) {
     });
     
     const fileInput = slot.querySelector('input[type="file"]');
-    fileInput.addEventListener('change', (e) => {
-      handleImageSelect(i, containerId, e);
-    });
+    fileInput.addEventListener('change', (e) => handleImageSelect(i, containerId, e));
     
     if (editable) {
-      // Eventos de drag and drop
       slot.addEventListener('dragstart', handleDragStart);
       slot.addEventListener('dragover', handleDragOver);
       slot.addEventListener('drop', handleDrop);
@@ -66,41 +108,34 @@ function createImageSlots(containerId, editable = true) {
   }
 }
 
-// Drag and drop handlers
+// Drag handlers
 function handleDragStart(e) {
   draggedElement = this;
   this.classList.add('dragging');
   e.dataTransfer.effectAllowed = 'move';
-  e.dataTransfer.setData('text/html', this.innerHTML);
-  e.dataTransfer.setData('drag-index', this.dataset.index);
 }
 
 function handleDragOver(e) {
-  if (e.preventDefault) {
-    e.preventDefault();
-  }
+  if (e.preventDefault) e.preventDefault();
   e.dataTransfer.dropEffect = 'move';
   return false;
 }
 
-function handleDragEnter(e) {
+function handleDragEnter() {
   this.classList.add('drag-over');
 }
 
-function handleDragLeave(e) {
+function handleDragLeave() {
   this.classList.remove('drag-over');
 }
 
 function handleDrop(e) {
-  if (e.stopPropagation) {
-    e.stopPropagation();
-  }
+  if (e.stopPropagation) e.stopPropagation();
   
   if (draggedElement !== this) {
     const draggedIndex = parseInt(draggedElement.dataset.index);
     const targetIndex = parseInt(this.dataset.index);
     
-    // Troca o conteúdo dos slots
     const draggedImg = draggedElement.querySelector('img');
     const draggedPlaceholder = draggedElement.querySelector('.placeholder');
     const draggedHasImage = draggedElement.classList.contains('has-image');
@@ -115,7 +150,6 @@ function handleDrop(e) {
     const targetDisplay = targetImg.style.display;
     const targetPlaceholderDisplay = targetPlaceholder.style.display;
     
-    // Troca imagens
     targetImg.src = draggedSrc;
     targetImg.style.display = draggedDisplay;
     targetPlaceholder.style.display = draggedPlaceholderDisplay;
@@ -124,20 +158,12 @@ function handleDrop(e) {
     draggedImg.style.display = targetDisplay;
     draggedPlaceholder.style.display = targetPlaceholderDisplay;
     
-    // Troca classes
-    if (draggedHasImage) {
-      this.classList.add('has-image');
-    } else {
-      this.classList.remove('has-image');
-    }
+    if (draggedHasImage) this.classList.add('has-image');
+    else this.classList.remove('has-image');
     
-    if (targetHasImage) {
-      draggedElement.classList.add('has-image');
-    } else {
-      draggedElement.classList.remove('has-image');
-    }
+    if (targetHasImage) draggedElement.classList.add('has-image');
+    else draggedElement.classList.remove('has-image');
     
-    // Troca os dados dos arquivos
     const containerId = this.closest('.image-slots').id;
     if (containerId === 'image-slots') {
       const temp = selectedFiles[draggedIndex];
@@ -147,17 +173,14 @@ function handleDrop(e) {
       if (!currentEditingProduct.tempFiles) currentEditingProduct.tempFiles = {};
       if (!currentEditingProduct.originalFiles) currentEditingProduct.originalFiles = {};
       
-      // Troca arquivos temporários
       const temp = currentEditingProduct.tempFiles[draggedIndex];
       currentEditingProduct.tempFiles[draggedIndex] = currentEditingProduct.tempFiles[targetIndex];
       currentEditingProduct.tempFiles[targetIndex] = temp;
       
-      // Troca imagens existentes
       const original = currentEditingProduct.originalFiles[draggedIndex];
       currentEditingProduct.originalFiles[draggedIndex] = currentEditingProduct.originalFiles[targetIndex];
       currentEditingProduct.originalFiles[targetIndex] = original;
       
-      // Troca dados dos slots
       const draggedData = {
         existingImage: draggedElement.dataset.existingImage,
         imageId: draggedElement.dataset.imageId
@@ -175,11 +198,9 @@ function handleDrop(e) {
   return false;
 }
 
-function handleDragEnd(e) {
+function handleDragEnd() {
   this.classList.remove('dragging');
-  document.querySelectorAll('.image-slot').forEach(slot => {
-    slot.classList.remove('drag-over');
-  });
+  document.querySelectorAll('.image-slot').forEach(slot => slot.classList.remove('drag-over'));
 }
 
 // Handle image selection
@@ -206,7 +227,6 @@ function handleImageSelect(index, containerId, event) {
     if (!currentEditingProduct.tempFiles) currentEditingProduct.tempFiles = {};
     currentEditingProduct.tempFiles[index] = file;
     
-    // Remove a flag de imagem existente se houver um arquivo novo
     if (slot.dataset.existingImage) {
       delete slot.dataset.existingImage;
       delete slot.dataset.imageId;
@@ -231,173 +251,216 @@ function removeImage(index, containerId) {
   if (containerId === 'image-slots') {
     selectedFiles[index] = null;
   } else if (containerId === 'edit-image-slots') {
-    if (currentEditingProduct.tempFiles) {
-      currentEditingProduct.tempFiles[index] = null;
+    if (currentEditingProduct.tempFiles) delete currentEditingProduct.tempFiles[index];
+    if (slot.dataset.existingImage) {
+      delete slot.dataset.existingImage;
+      delete slot.dataset.imageId;
     }
-    // Remove dados de imagem existente
-    delete slot.dataset.existingImage;
-    delete slot.dataset.imageId;
   }
 }
 
-// login
-loginForm.addEventListener('submit', async e => {
-  e.preventDefault();
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email: loginForm.email.value,
-    password: loginForm.password.value
-  });
-  if (error) return alert('Erro ao logar');
-  loginForm.style.display = 'none';
-  adminArea.style.display = 'block';
-  await loadCategories();
-  await loadProducts();
-  await loadDashboard();
-  createImageSlots('image-slots');
-});
-
-// logout
-document.getElementById('logout-btn').addEventListener('click', async () => {
-  await supabase.auth.signOut();
-  adminArea.style.display = 'none';
-  loginForm.style.display = 'block';
-});
-
-// dashboard
-async function loadDashboard() {
-  const [{ data: prod }, { data: orders }, { data: sales }] = await Promise.all([
-    supabase.from('products').select('id'),
-    supabase.from('orders').select('id'),
-    supabase.rpc('sum_orders_total')
-  ]);
-  countProducts.textContent = prod?.length || 0;
-  countOrders.textContent = orders?.length || 0;
-  countSales.textContent = (sales && sales[0] && sales[0].sum) ? Number(sales[0].sum).toFixed(2) : '0.00';
-}
-
-// categorias (select)
-async function loadCategories() {
-  const { data } = await supabase.from('categories').select('*').order('name');
-  if (!data) return;
-  const opts = data.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-  categorySelect.innerHTML = '<option value="">Escolha categoria</option>' + opts;
-}
-
-// listagem com editor inline
+// Load active products
 async function loadProducts() {
-  const { data } = await supabase.from('products').select('*').order('created_at', { ascending: false });
-  if (!data) return;
-
-  productsList.innerHTML = data.map(p => `
-    <details class="admin-card" data-id="${p.id}">
-      <summary>
-        <img src="${SUPABASE_URL}/storage/v1/object/public/product-images/${p.image_path}" />
-        <div>
-          <strong>${p.title}</strong>
-          <span>R$ ${Number(p.price).toFixed(2)} • Est: ${p.stock ?? '—'}</span>
-        </div>
-      </summary>
-
-      <form class="admin-form" data-id="${p.id}">
-        <label>Título<br><input name="title" value="${p.title}" required></label>
-        <label>Slug<br><input name="slug" value="${p.slug}"></label>
-        <label>Descrição<br><textarea name="description">${p.description || ''}</textarea></label>
-
-        <div class="grid-3">
-          <label>Preço (R$)<br><input name="price" type="number" step="0.01" value="${p.price}" required></label>
-          <label>Preço anterior<br><input name="compare_at_price" type="number" step="0.01" value="${p.compare_at_price || ''}"></label>
-          <label>Estoque<br><input name="stock" type="number" min="0" value="${p.stock || ''}"></label>
-        </div>
-
-        <div class="grid-3">
-          <label>Volume (ml)<br><input name="volume_ml" type="number" value="${p.volume_ml || ''}"></label>
-          <label>Teor alcoólico (%)<br><input name="abv" type="number" step="0.1" value="${p.abv || ''}"></label>
-          <label>Categoria<br>${categorySelect.outerHTML.replace('name="category_id"', `name="category_id"`)}</label>
-        </div>
-
-        <label class="check">
-          <input type="checkbox" name="is_featured" ${p.is_featured ? 'checked' : ''}> Destaque
-        </label>
-
-        <div class="image-preview-grid" id="images-${p.id}">
-          <!-- Imagens serão carregadas aqui -->
-        </div>
-
-        <button type="button" class="edit-images-btn" onclick="openImageEdit('${p.id}')">
-          📷 Editar Imagens
-        </button>
-
-        <div class="actions">
-          <button type="submit" class="btn-primary">Salvar</button>
-          <button type="button" class="btn-danger" data-del="${p.id}">Excluir</button>
-        </div>
-      </form>
-    </details>
-  `).join('');
-
-  // Carrega imagens para cada produto
-  for (const product of data) {
-    await loadProductImages(product.id);
+  const { data, error } = await supabase
+    .from('products')
+    .select('*')
+    .eq('archived', false)
+    .order('created_at', { ascending: false });
+  
+  if (error) {
+    console.error(error);
+    productsList.innerHTML = '<p style="text-align:center;color:var(--muted)">Erro ao carregar produtos</p>';
+    return;
   }
+  
+  if (!data || data.length === 0) {
+    productsList.innerHTML = '<p style="text-align:center;color:var(--muted);padding:20px">Nenhum produto ativo</p>';
+    return;
+  }
+  
+  productsList.innerHTML = data.map(p => {
+    const thumb = p.thumbnail || p.image_path;
+    const thumbUrl = thumb ? `${SUPABASE_URL}/storage/v1/object/public/product-images/${thumb}` : 'https://via.placeholder.com/60';
+    
+    return `
+      <details class="admin-card">
+        <summary>
+          <img src="${thumbUrl}" alt="${p.title}">
+          <strong>${p.title}</strong>
+          <span class="muted">R$ ${Number(p.price).toFixed(2)}</span>
+        </summary>
+        <div class="admin-form">
+          <div><strong>Slug:</strong> ${p.slug}</div>
+          <div><strong>Estoque:</strong> ${p.stock || 0}</div>
+          ${p.is_featured ? '<div style="color: var(--accent);">⭐ Em Destaque</div>' : ''}
+          
+          <div id="images-${p.id}" class="image-preview-grid"></div>
+          
+          <div class="actions">
+            <button class="btn-secondary" onclick="openImageEdit(${p.id})">Editar Imagens</button>
+            <button class="btn-secondary" data-archive="${p.id}" style="background:rgba(168,85,247,0.2);border-color:rgba(168,85,247,0.4);color:#c084fc">Arquivar</button>
+            <button class="btn-danger" data-del="${p.id}">Excluir</button>
+          </div>
+        </div>
+      </details>
+    `;
+  }).join('');
+  
+  data.forEach(p => loadProductImages(p.id));
+  attachActiveProductsListeners();
+}
 
-  // preenche categorias
-  document.querySelectorAll('.admin-form select[name="category_id"]').forEach(sel => {
-    sel.value = sel.closest('form').dataset.cat || '';
-  });
+// Load archived products
+async function loadArchivedProducts() {
+  if (!archivedList) return;
+  
+  const { data, error } = await supabase
+    .from('products')
+    .select('*')
+    .eq('archived', true)
+    .order('created_at', { ascending: false });
+  
+  if (error) {
+    console.error(error);
+    archivedList.innerHTML = '<p style="text-align:center;color:var(--muted)">Erro ao carregar arquivados</p>';
+    return;
+  }
+  
+  if (!data || data.length === 0) {
+    archivedList.innerHTML = '<p style="text-align:center;color:var(--muted);padding:20px;font-style:italic">📭 Nenhum produto arquivado</p>';
+    return;
+  }
+  
+  archivedList.innerHTML = data.map(p => {
+    const thumb = p.thumbnail || p.image_path;
+    const thumbUrl = thumb ? `${SUPABASE_URL}/storage/v1/object/public/product-images/${thumb}` : 'https://via.placeholder.com/60';
+    
+    return `
+      <details class="admin-card" style="opacity:0.7">
+        <summary>
+          <img src="${thumbUrl}" alt="${p.title}" style="filter:grayscale(50%)">
+          <strong>${p.title}</strong>
+          <span class="muted">R$ ${Number(p.price).toFixed(2)}</span>
+        </summary>
+        <div class="admin-form">
+          <div><strong>Slug:</strong> ${p.slug}</div>
+          <div><strong>Estoque:</strong> ${p.stock || 0}</div>
+          ${p.is_featured ? '<div style="color: var(--accent);">⭐ Em Destaque</div>' : ''}
+          <div style="background:rgba(168,85,247,0.1);padding:8px;border-radius:8px;margin:12px 0;color:#c084fc;font-size:0.9rem">
+            🗄️ <strong>Produto Arquivado</strong> - Não aparece na loja
+          </div>
+          
+          <div id="images-archived-${p.id}" class="image-preview-grid"></div>
+          
+          <div class="actions">
+            <button class="btn-primary" data-unarchive="${p.id}" style="flex:1">✅ Desarquivar</button>
+            <button class="btn-danger" data-del="${p.id}">Excluir</button>
+          </div>
+        </div>
+      </details>
+    `;
+  }).join('');
+  
+  data.forEach(p => loadProductImages(p.id, true));
+  attachArchivedProductsListeners();
+}
 
-  // handlers
-  document.querySelectorAll('.admin-form').forEach(form => {
-    form.addEventListener('submit', async e => {
-      e.preventDefault();
-      const id = form.dataset.id;
-      const payload = Object.fromEntries(new FormData(form));
-      payload.price = parseFloat(payload.price);
-      payload.compare_at_price = payload.compare_at_price ? parseFloat(payload.compare_at_price) : null;
-      payload.stock = payload.stock ? parseInt(payload.stock) : null;
-      payload.volume_ml = payload.volume_ml ? parseInt(payload.volume_ml) : null;
-      payload.abv = payload.abv ? parseFloat(payload.abv) : null;
-      payload.category_id = payload.category_id ? parseInt(payload.category_id) : null;
-      payload.is_featured = payload.is_featured === 'on';
-
-      const { error } = await supabase.from('products').update(payload).eq('id', id);
-      if (error) return alert('Erro ao salvar');
-      alert('Produto atualizado!');
+// Attach event listeners to active products
+function attachActiveProductsListeners() {
+  document.querySelectorAll('[data-archive]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('Deseja arquivar este produto?\n\nEle não aparecerá mais na loja, mas você poderá desarquivá-lo depois.')) return;
+      const id = btn.dataset.archive;
+      const { error } = await supabase.from('products').update({ archived: true }).eq('id', id);
+      if (error) return alert('Erro ao arquivar: ' + error.message);
+      alert('✅ Produto arquivado com sucesso!');
       loadProducts();
+      loadArchivedProducts();
       loadDashboard();
     });
   });
-
-  document.querySelectorAll('.btn-danger').forEach(btn =>
-    btn.addEventListener('click', async e => {
-      if (!confirm('Deseja realmente excluir este produto?')) return;
+  
+  document.querySelectorAll('[data-del]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('⚠️ ATENÇÃO! Deseja realmente EXCLUIR este produto PERMANENTEMENTE?\n\nEsta ação não pode ser desfeita!\n\nSe quiser apenas remover da loja, use "Arquivar" em vez de excluir.')) return;
       const id = btn.dataset.del;
+      
+      const { data: images } = await supabase.from('product_images').select('image_path').eq('product_id', id);
+      if (images) {
+        for (const img of images) {
+          await supabase.storage.from('product-images').remove([img.image_path]);
+        }
+        await supabase.from('product_images').delete().eq('product_id', id);
+      }
+      
       const { error } = await supabase.from('products').delete().eq('id', id);
-      if (error) return alert('Erro ao excluir');
+      if (error) return alert('Erro ao excluir: ' + error.message);
+      alert('🗑️ Produto excluído permanentemente!');
       loadProducts();
+      loadArchivedProducts();
       loadDashboard();
-    })
-  );
+    });
+  });
 }
 
-// Carrega imagens do produto
-async function loadProductImages(productId) {
+// Attach event listeners to archived products
+function attachArchivedProductsListeners() {
+  document.querySelectorAll('[data-unarchive]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('Desarquivar este produto?\n\nEle voltará a aparecer na loja imediatamente.')) return;
+      const id = btn.dataset.unarchive;
+      const { error } = await supabase.from('products').update({ archived: false }).eq('id', id);
+      if (error) return alert('Erro ao desarquivar: ' + error.message);
+      alert('✅ Produto desarquivado! Agora está visível na loja.');
+      loadProducts();
+      loadArchivedProducts();
+      loadDashboard();
+    });
+  });
+  
+  document.querySelectorAll('[data-del]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('⚠️ ATENÇÃO! Deseja realmente EXCLUIR este produto PERMANENTEMENTE?\n\nEsta ação não pode ser desfeita!')) return;
+      const id = btn.dataset.del;
+      
+      const { data: images } = await supabase.from('product_images').select('image_path').eq('product_id', id);
+      if (images) {
+        for (const img of images) {
+          await supabase.storage.from('product-images').remove([img.image_path]);
+        }
+        await supabase.from('product_images').delete().eq('product_id', id);
+      }
+      
+      const { error } = await supabase.from('products').delete().eq('id', id);
+      if (error) return alert('Erro ao excluir: ' + error.message);
+      alert('🗑️ Produto excluído permanentemente!');
+      loadProducts();
+      loadArchivedProducts();
+      loadDashboard();
+    });
+  });
+}
+
+// Load product images
+async function loadProductImages(productId, isArchived = false) {
   const { data: images } = await supabase
     .from('product_images')
     .select('*')
     .eq('product_id', productId)
     .order('position');
 
-  const container = document.getElementById(`images-${productId}`);
+  const containerId = isArchived ? `images-archived-${productId}` : `images-${productId}`;
+  const container = document.getElementById(containerId);
   if (!container) return;
 
   container.innerHTML = images?.map(img => `
     <div class="image-preview-item">
       <img src="${SUPABASE_URL}/storage/v1/object/public/product-images/${img.image_path}" alt="Imagem do produto">
     </div>
-  `).join('') || '';
+  `).join('') || '<p class="muted" style="grid-column:1/-1;text-align:center;font-size:0.85rem">Sem imagens</p>';
 }
 
-// Abre modal de edição de imagens
+// Open image edit modal
 async function openImageEdit(productId) {
   currentEditingProduct = { 
     id: productId, 
@@ -410,7 +473,6 @@ async function openImageEdit(productId) {
   
   createImageSlots('edit-image-slots');
   
-  // Carrega imagens existentes
   const { data: images } = await supabase
     .from('product_images')
     .select('*')
@@ -430,7 +492,6 @@ async function openImageEdit(productId) {
       slot.dataset.existingImage = img.image_path;
       slot.dataset.imageId = img.id;
       
-      // Salva estado original
       currentEditingProduct.originalFiles[index] = {
         image_path: img.image_path,
         id: img.id
@@ -439,7 +500,7 @@ async function openImageEdit(productId) {
   }
 }
 
-// Salva imagens editadas
+// Save edited images
 document.getElementById('save-images')?.addEventListener('click', async () => {
   if (!currentEditingProduct) return;
   
@@ -447,7 +508,6 @@ document.getElementById('save-images')?.addEventListener('click', async () => {
   const slots = document.querySelectorAll('#edit-image-slots .image-slot');
   const finalOrder = [];
   
-  // Coleta a ordem final dos slots
   slots.forEach((slot, index) => {
     const hasImage = slot.classList.contains('has-image');
     const existingImage = slot.dataset.existingImage;
@@ -471,7 +531,6 @@ document.getElementById('save-images')?.addEventListener('click', async () => {
     return;
   }
   
-  // Deleta todas as imagens antigas e recria na nova ordem
   const { data: oldImages } = await supabase
     .from('product_images')
     .select('*')
@@ -484,18 +543,15 @@ document.getElementById('save-images')?.addEventListener('click', async () => {
     await supabase.from('product_images').delete().eq('product_id', id);
   }
   
-  // Salva na nova ordem
   for (let i = 0; i < finalOrder.length; i++) {
     const item = finalOrder[i];
     let filePath;
     
     if (item.tempFile) {
-      // Upload novo arquivo
       filePath = `${Date.now()}_${i}_${item.tempFile.name}`;
       const { error: upError } = await supabase.storage.from('product-images').upload(filePath, item.tempFile);
       if (upError) continue;
     } else if (item.existingImage) {
-      // Reusa imagem existente
       filePath = item.existingImage;
     } else {
       continue;
@@ -517,17 +573,18 @@ document.getElementById('save-images')?.addEventListener('click', async () => {
   
   document.getElementById('image-edit-modal').style.display = 'none';
   loadProducts();
-  alert('Imagens reordenadas com sucesso!');
+  loadArchivedProducts();
+  alert('✅ Imagens reordenadas com sucesso!');
 });
 
-// Cancela edição de imagens
+// Cancel image edit
 document.getElementById('cancel-image-edit')?.addEventListener('click', () => {
   document.getElementById('image-edit-modal').style.display = 'none';
   currentEditingProduct = null;
 });
 
-// cadastro novo produto
-newProductForm.addEventListener('submit', async e => {
+// Create new product
+newProductForm?.addEventListener('submit', async e => {
   e.preventDefault();
   
   const hasImages = selectedFiles.some(f => f);
@@ -545,11 +602,12 @@ newProductForm.addEventListener('submit', async e => {
     stock: newProductForm.stock.value ? parseInt(newProductForm.stock.value) : null,
     image_path: null,
     thumbnail: null,
-    is_featured: newProductForm.querySelector('[name="is_featured"]').checked
+    is_featured: newProductForm.querySelector('[name="is_featured"]').checked,
+    archived: false
   };
   
   const { data: product, error } = await supabase.from('products').insert([payload]).select().single();
-  if (error || !product) return alert('Erro ao criar produto');
+  if (error || !product) return alert('Erro ao criar produto: ' + (error?.message || ''));
   
   const validFiles = selectedFiles.filter(f => f);
   for (let i = 0; i < validFiles.length; i++) {
@@ -572,17 +630,19 @@ newProductForm.addEventListener('submit', async e => {
     }
   }
   
-  alert('Produto cadastrado com imagens!');
+  alert('✅ Produto cadastrado com sucesso!');
   newProductForm.reset();
   selectedFiles = new Array(5).fill(null);
   createImageSlots('image-slots');
   loadProducts();
+  loadArchivedProducts();
   loadDashboard();
 });
 
-// carga inicial
+// Initial load
 loadCategories();
+createImageSlots('image-slots');
 
-// Torna as funções globais para serem chamadas pelos eventos onclick
+// Make functions global
 window.removeImage = removeImage;
 window.openImageEdit = openImageEdit;
