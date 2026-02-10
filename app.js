@@ -1,4 +1,4 @@
-// app.js - DrinkValley versão 2.4 (com filtro de arquivados)
+// app.js - DrinkValley v3.0 (somente bebidas)
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const SUPABASE_URL = 'https://qepishfrgwynpuazirmj.supabase.co';

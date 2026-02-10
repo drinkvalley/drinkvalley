@@ -1,4 +1,4 @@
-// product.js - página de detalhe com carrossel para bebidas e pods
+// product.js - DrinkValley v3.0 (página de produto - somente bebidas)
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const SUPABASE_URL = 'https://qepishfrgwynpuazirmj.supabase.co';
@@ -10,8 +10,17 @@ const slug = params.get('slug');
 const el = document.getElementById('product-detail');
 
 let CART = JSON.parse(localStorage.getItem('cart_v1') || '[]');
-function saveCart(){ localStorage.setItem('cart_v1', JSON.stringify(CART)); updateCartCount(); }
-function formatBRL(v){ return Number(v).toFixed(2).replace('.',','); }
+
+function saveCart(){ 
+  localStorage.setItem('cart_v1', JSON.stringify(CART)); 
+  updateCartCount(); 
+  renderMiniCart(); 
+}
+
+function formatBRL(v){ 
+  return Number(v).toFixed(2).replace('.',','); 
+}
+
 function updateCartCount(){ 
   document.querySelectorAll('#cart-count').forEach(n=> n.textContent = CART.reduce((s,i)=> s + i.qty, 0)); 
 }
@@ -25,38 +34,68 @@ function showToast(message) {
   const toast = document.getElementById('toast');
   toast.textContent = message;
   toast.classList.remove('hidden');
-  setTimeout(() => toast.classList.add('hidden'), 3000);
+  toast.style.opacity = '1';
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    setTimeout(() => toast.classList.add('hidden'), 200);
+  }, 2500);
+}
+
+function renderMiniCart() {
+  const miniCartItems = document.getElementById('mini-cart-items');
+  const miniCartTotal = document.getElementById('mini-cart-total');
+  
+  if (!miniCartItems || !miniCartTotal) return;
+  
+  miniCartItems.innerHTML = CART.map(item => `
+    <li style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.03)">
+      <img src="${getPublicUrl(item.image)}" alt="${item.title}" style="width:56px;height:56px;object-fit:cover;border-radius:6px"/>
+      <div style="flex:1">
+        <div style="font-weight:600">${item.title}</div>
+        <div>R$ ${formatBRL(item.price)}</div>
+        <div style="margin-top:6px">
+          <button data-decr="${item.id}">-</button>
+          <span style="margin:0 8px">${item.qty}</span>
+          <button data-incr="${item.id}">+</button>
+          <button data-rm="${item.id}" style="margin-left:12px;color:#f97373">Remover</button>
+        </div>
+      </div>
+    </li>
+  `).join('') || '<li class="muted">Carrinho vazio</li>';
+  
+  miniCartTotal.textContent = formatBRL(CART.reduce((s, i) => s + (i.price * i.qty), 0));
 }
 
 async function load(){
-  if(!slug){ el.innerHTML = '<p class="not-found">Produto não encontrado</p>'; return; }
+  if(!slug){ 
+    el.innerHTML = '<p class="not-found">Produto não encontrado</p>'; 
+    return; 
+  }
+  
   el.innerHTML = '<div class="loading">Carregando produto...</div>';
   
   const { data, error } = await supabase.from('products').select('*').eq('slug', slug).single();
-  if(error || !data){ el.innerHTML = '<p class="not-found">Produto não encontrado</p>'; console.error(error); return; }
+  
+  if(error || !data){ 
+    el.innerHTML = '<p class="not-found">Produto não encontrado</p>'; 
+    console.error(error); 
+    return; 
+  }
 
-  // fetch images related
-  const { data: imgs } = await supabase.from('product_images').select('image_path').eq('product_id', data.id).order('position', {ascending:true});
+  // Buscar imagens do produto
+  const { data: imgs } = await supabase
+    .from('product_images')
+    .select('image_path')
+    .eq('product_id', data.id)
+    .order('position', {ascending:true});
+    
   const images = (imgs && imgs.length) ? imgs.map(i=>i.image_path) : (data.image_path ? [data.image_path] : []);
 
-  // Identificar se é pod ou bebida
-  const isPod = data.pod_flavor || data.pod_strength || data.pod_puffs;
-  
-  // Informações adicionais do produto
+  // Especificações do produto (apenas bebidas)
   let specs = [];
   
-  if (isPod) {
-    // ESPECIFICAÇÕES DE PODS
-    if (data.pod_flavor) specs.push({ label: 'Sabor', value: data.pod_flavor });
-    if (data.pod_strength) specs.push({ label: 'Força', value: data.pod_strength });
-    if (data.pod_puffs) specs.push({ label: 'Puffs', value: `${data.pod_puffs} puffs` });
-    if (data.pod_capacity) specs.push({ label: 'Capacidade', value: `${data.pod_capacity}ml` });
-  } else {
-    // ESPECIFICAÇÕES DE BEBIDAS
-    if (data.volume_ml) specs.push({ label: 'Volume', value: `${data.volume_ml}ml` });
-    if (data.abv) specs.push({ label: 'Teor Alcoólico', value: `${data.abv}% ABV` });
-  }
-  
+  if (data.volume_ml) specs.push({ label: 'Volume', value: `${data.volume_ml}ml` });
+  if (data.abv) specs.push({ label: 'Teor Alcoólico', value: `${data.abv}% ABV` });
   if (data.origin) specs.push({ label: 'Origem', value: data.origin });
 
   // Buscar categoria
@@ -69,32 +108,32 @@ async function load(){
   el.innerHTML = `
     <div class="product-gallery">
       <div class="carousel" id="carousel-main">
-        ${images.map((img, idx)=>`
+        ${images.length > 0 ? images.map((img, idx)=>`
           <div class="carousel-item ${idx===0?'active':''}" data-index="${idx}">
             <img src="${getPublicUrl(img)}" alt="${data.title}" />
           </div>
-        `).join('')}
-        ${images.length === 0 ? `
+        `).join('') : `
           <div class="carousel-item active">
             <img src="${getPublicUrl(null)}" alt="Produto sem imagem" />
           </div>
-        ` : ''}
+        `}
       </div>
       
-      <div class="carousel-thumbnails">
-        ${images.map((img, idx)=>`
-          <div class="thumb-item ${idx===0?'active':''}" data-index="${idx}">
-            <img src="${getPublicUrl(img)}" alt="Miniatura ${idx+1}" />
-          </div>
-        `).join('')}
-      </div>
+      ${images.length > 1 ? `
+        <div class="carousel-thumbnails">
+          ${images.map((img, idx)=>`
+            <div class="thumb-item ${idx===0?'active':''}" data-index="${idx}">
+              <img src="${getPublicUrl(img)}" alt="Miniatura ${idx+1}" />
+            </div>
+          `).join('')}
+        </div>
+      ` : ''}
     </div>
     
     <div class="product-info">
       <div class="product-header">
         <h1 class="product-title">${data.title}</h1>
         ${category ? `<span class="product-category">${category.name}</span>` : ''}
-        ${isPod ? '<span class="product-type-badge pod-badge">💨 POD</span>' : '<span class="product-type-badge drink-badge">🍾 BEBIDA</span>'}
       </div>
       
       <div class="product-pricing">
@@ -102,18 +141,20 @@ async function load(){
         ${data.compare_at_price ? `<span class="compare-price">R$ ${formatBRL(data.compare_at_price)}</span>` : ''}
       </div>
       
-      <div class="product-specs">
-        ${specs.map(spec => `
-          <div class="spec-item">
-            <span class="spec-label">${spec.label}:</span>
-            <span class="spec-value">${spec.value}</span>
-          </div>
-        `).join('')}
-      </div>
+      ${specs.length > 0 ? `
+        <div class="product-specs">
+          ${specs.map(spec => `
+            <div class="spec-item">
+              <span class="spec-label">${spec.label}:</span>
+              <span class="spec-value">${spec.value}</span>
+            </div>
+          `).join('')}
+        </div>
+      ` : ''}
       
       <div class="product-description">
         <h3>Descrição</h3>
-        <p>${data.description || 'Sem descrição disponível.'}</p>
+        <p>${data.description || 'Bebida de qualidade premium.'}</p>
       </div>
       
       <div class="product-stock">
@@ -139,43 +180,42 @@ async function load(){
           <span class="payment-icon">💳</span>
           <span>Parcele em até 12x sem juros</span>
         </div>
-        ${isPod ? `
-          <div class="warning-info">
-            <span class="warning-icon">⚠️</span>
-            <span>Produto com nicotina. Apenas para maiores de 18 anos.</span>
-          </div>
-        ` : ''}
       </div>
     </div>
   `;
 
   // Carousel functionality
-  const carouselItems = document.querySelectorAll('.carousel-item');
-  const thumbnails = document.querySelectorAll('.thumb-item');
-  
-  thumbnails.forEach((thumb, index) => {
-    thumb.addEventListener('click', () => {
-      carouselItems.forEach(item => item.classList.remove('active'));
-      thumbnails.forEach(item => item.classList.remove('active'));
-      
-      carouselItems[index].classList.add('active');
-      thumbnails[index].classList.add('active');
+  if (images.length > 1) {
+    const carouselItems = document.querySelectorAll('.carousel-item');
+    const thumbnails = document.querySelectorAll('.thumb-item');
+    
+    thumbnails.forEach((thumb, index) => {
+      thumb.addEventListener('click', () => {
+        carouselItems.forEach(item => item.classList.remove('active'));
+        thumbnails.forEach(item => item.classList.remove('active'));
+        
+        carouselItems[index].classList.add('active');
+        thumbnails[index].classList.add('active');
+      });
     });
-  });
+  }
 
   // Add to cart
   document.getElementById('add-to-cart')?.addEventListener('click', ()=>{
     if (data.stock <= 0) return;
     
     const exists = CART.find(i=>i.id===data.id);
-    if(exists) exists.qty++;
-    else CART.push({
-      id:data.id, 
-      title:data.title, 
-      price: Number(data.price), 
-      image: images[0] || data.image_path, 
-      qty:1
-    });
+    if(exists) {
+      exists.qty++;
+    } else {
+      CART.push({
+        id: data.id, 
+        title: data.title, 
+        price: Number(data.price), 
+        image: images[0] || data.image_path, 
+        qty: 1
+      });
+    }
     saveCart();
     showToast('✓ Produto adicionado ao carrinho!');
   });
@@ -194,69 +234,69 @@ async function load(){
   });
 
   loadReviews(data.id);
-  loadRelatedProducts(data.category_id, data.id, isPod);
+  loadRelatedProducts(data.category_id, data.id);
   updateCartCount();
+  renderMiniCart();
 }
 
-async function loadRelatedProducts(category_id, currentProductId, isPod){
-  console.log('🔍 Buscando produtos relacionados...');
-  console.log('📦 Categoria ID:', category_id);
-  console.log('🆔 Produto atual ID:', currentProductId);
-  console.log('💨 É pod?', isPod);
+async function loadRelatedProducts(category_id, currentProductId){
+  const grid = document.getElementById('related-products-grid');
+  if (!grid) return;
   
   if (!category_id) {
-    console.log('❌ category_id vazio');
+    grid.innerHTML = '';
     return;
   }
   
   try {
-    // Buscar produtos da mesma categoria, excluindo o atual
+    // Buscar produtos da mesma categoria, não arquivados, excluindo o produto atual
     const { data: products, error } = await supabase
       .from('products')
-      .select('id, title, slug, price, image_path, category_id, pod_flavor, volume_ml')
+      .select('id, title, slug, price, compare_at_price, image_path, thumbnail, category_id, stock, archived, is_featured')
       .eq('category_id', category_id)
-      .eq('is_archived', false)
+      .eq('archived', false)
       .neq('id', currentProductId)
-      .limit(4);
+      .order('is_featured', { ascending: false })
+      .limit(8);
       
     if (error) {
-      console.log('❌ Erro Supabase:', error);
+      console.error('Erro ao buscar produtos relacionados:', error);
+      grid.innerHTML = '';
       return;
     }
     
-    console.log('✅ Produtos encontrados:', products);
-    
     if (!products || products.length === 0) {
-      console.log('📭 Nenhum produto relacionado encontrado');
-      document.getElementById('related-products-grid').innerHTML = `
-        <div style="grid-column: 1/-1; text-align: center; color: var(--muted); padding: 40px;">
-          Nenhum produto similar encontrado nesta categoria.
+      grid.innerHTML = `
+        <div style="grid-column: 1/-1; text-align: center; color: #999; padding: 40px;">
+          Nenhum produto similar encontrado.
         </div>
       `;
       return;
     }
     
-    const grid = document.getElementById('related-products-grid');
     grid.innerHTML = products.map(product => {
-      const isProductPod = product.pod_flavor || product.volume_ml === null;
-      const typeBadge = isProductPod ? '<div class="badge pod-badge">💨 POD</div>' : '<div class="badge drink-badge">🍾</div>';
+      const imgPath = product.thumbnail || product.image_path;
+      const badge = product.is_featured ? '<div class="badge">DESTAQUE</div>' : '';
+      const compare = product.compare_at_price ? `<div class="compare">R$ ${formatBRL(product.compare_at_price)}</div>` : '';
       
       return `
-        <div class="card related-card">
-          <a href="/product.html?slug=${product.slug}" class="card-link">
+        <article class="card" role="article">
+          <a href="/product.html?slug=${encodeURIComponent(product.slug)}" style="text-decoration:none;color:inherit;">
+            ${badge}
             <div class="card-thumb">
-              <img src="${getPublicUrl(product.image_path)}" alt="${product.title}" />
-              ${typeBadge}
+              <img src="${getPublicUrl(imgPath)}" alt="${product.title}" loading="lazy"/>
             </div>
-            <h3 class="product-title">${product.title}</h3>
+            <div class="product-title">${product.title}</div>
+            ${compare}
             <div class="price">R$ ${formatBRL(product.price)}</div>
           </a>
-        </div>
+        </article>
       `;
     }).join('');
     
   } catch (err) {
-    console.log('💥 Erro geral:', err);
+    console.error('Erro ao carregar produtos relacionados:', err);
+    grid.innerHTML = '';
   }
 }
 
@@ -269,6 +309,8 @@ async function loadReviews(productId){
     .limit(20);
     
   const el = document.getElementById('reviews');
+  if (!el) return;
+  
   if(!data || !data.length){ 
     el.innerHTML = '<div class="no-reviews">Seja o primeiro a avaliar este produto.</div>'; 
     return; 
@@ -289,15 +331,18 @@ async function loadReviews(productId){
 document.getElementById('review-form')?.addEventListener('submit', async (e)=>{
   e.preventDefault();
   const form = e.target;
-  const productId = new URLSearchParams(location.search).get('slug');
+  const productSlug = new URLSearchParams(location.search).get('slug');
   
   const { data: product } = await supabase
     .from('products')
     .select('id')
-    .eq('slug', productId)
+    .eq('slug', productSlug)
     .single();
     
-  if (!product) return;
+  if (!product) {
+    showToast('Erro ao enviar avaliação');
+    return;
+  }
   
   const payload = { 
     product_id: product.id, 
@@ -307,6 +352,7 @@ document.getElementById('review-form')?.addEventListener('submit', async (e)=>{
   };
   
   const { error } = await supabase.from('reviews').insert([payload]);
+  
   if(error){ 
     showToast('Erro ao enviar avaliação'); 
     console.error(error); 
@@ -321,12 +367,65 @@ document.getElementById('review-form')?.addEventListener('submit', async (e)=>{
 // Cart toggle
 document.getElementById('cart-toggle')?.addEventListener('click', () => {
   const miniCart = document.getElementById('mini-cart');
-  miniCart.setAttribute('aria-hidden', 'false');
+  if (miniCart) miniCart.setAttribute('aria-hidden', 'false');
 });
 
 document.getElementById('close-mini-cart')?.addEventListener('click', () => {
   const miniCart = document.getElementById('mini-cart');
-  miniCart.setAttribute('aria-hidden', 'true');
+  if (miniCart) miniCart.setAttribute('aria-hidden', 'true');
 });
 
-load();w
+// Mini cart controls
+document.getElementById('mini-cart-items')?.addEventListener('click', (e) => {
+  const id = e.target.dataset.decr || e.target.dataset.incr || e.target.dataset.rm;
+  if (!id) return;
+  
+  if (e.target.dataset.decr) { 
+    const item = CART.find(i => i.id == id); 
+    if (item && item.qty > 1) {
+      item.qty--;
+      saveCart();
+    }
+  }
+  if (e.target.dataset.incr) { 
+    const item = CART.find(i => i.id == id); 
+    if (item) {
+      item.qty++;
+      saveCart();
+    }
+  }
+  if (e.target.dataset.rm) { 
+    CART = CART.filter(i => i.id != id);
+    saveCart();
+  }
+});
+
+// Checkout
+document.getElementById('go-checkout')?.addEventListener('click', () => {
+  if (!CART.length) {
+    showToast('Carrinho vazio');
+    return;
+  }
+  
+  let message = `🍾 *NOVO PEDIDO* DrinkValley%0A%0A`;
+  CART.forEach((item, idx) => {
+    message += `${idx + 1}. ${encodeURIComponent(item.title)} — ${item.qty}x R$ ${formatBRL(item.price)}%0A`;
+  });
+  const total = CART.reduce((s, i) => s + (i.price * i.qty), 0);
+  message += `%0A*Total: R$ ${formatBRL(total)}*%0A%0A`;
+  message += `✅ Pedido enviado pelo cliente. Aguardando confirmação.`;
+  
+  const WHATS = '5551998811587';
+  window.open(`https://wa.me/${WHATS}?text=${message}`, '_blank');
+  
+  CART = [];
+  saveCart();
+  
+  const miniCart = document.getElementById('mini-cart');
+  if (miniCart) miniCart.setAttribute('aria-hidden', 'true');
+  
+  showToast('Pedido enviado via WhatsApp ✅');
+});
+
+// Iniciar
+load();
